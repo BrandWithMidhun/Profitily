@@ -40,5 +40,14 @@ Coverage/mutation target: <…>
 1. <…>
 2. <…>
 
-## Open questions for the planner
-- <…>  (block on these if they affect scope)
+## Security & simplicity check
+- Security touchpoints (`docs/13`) this task affects: <input validation / token
+  handling / authz / webhook verify / none> → how handled.
+- Simplicity (`docs/14`): confirm the approach is the simplest that meets the criteria;
+  note anything you deliberately did **not** build.
+
+## Flags / open questions (blocking)
+List anything ambiguous, conflicting, risky, or outside the spec. **Raise each as a
+flag (`docs/templates/FLAG.md`) and do not proceed past it without a planner decision.**
+- <none / flag #1 …>
+

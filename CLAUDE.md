@@ -16,6 +16,20 @@ product / variant / order / campaign / customer grain, and layers AI agents,
 recommendations, and alerts on top. Specs live in `docs/`. The profit math in
 `docs/06-PROFIT-ENGINE.md` is authoritative.
 
+## 1a. Operating principles (highest priority — apply to everything)
+- **Strong security, always.** Follow `docs/13-SECURITY.md`. Tenant isolation, token
+  encryption, input validation, least privilege, and webhook verification are
+  non-negotiable and never cut for speed.
+- **No over-engineering.** Build the simplest thing that meets the spec + acceptance
+  criteria (`docs/14 §1`). No speculative features, no premature abstraction/
+  optimization, no configurability "just in case." Boring and proven beats clever.
+- **Best practices only** (`docs/14 §2`): small typed units, pure core, explicit error
+  handling, module boundaries, tests in the same PR.
+- **Stop and flag — don't guess.** If anything is ambiguous, conflicting, risky, or
+  tempts work outside the spec, **STOP**, raise a flag (`docs/templates/FLAG.md`,
+  `docs/14 §4`), and wait for the planner's review before continuing. A correct early
+  flag is success; a wrong silent guess is a defect.
+
 ## 2. Cost philosophy (important)
 
 This project is built **open-source-first and self-hostable** to keep paid-tool
@@ -125,6 +139,10 @@ A task is **not done** until the gates pass **and** acceptance criteria are met.
 - **No scope creep.** If a request implies work not in `docs/`, raise it as a new task
   instead of building it.
 - **Ask before destructive ops** (dropping tables, deleting migrations, force-push).
+- **Security is mandatory** — follow `docs/13-SECURITY.md`; validate all input, encrypt
+  tokens, default-deny authz, verify webhooks, no secrets/PII in logs.
+- **Don't over-engineer** — `docs/14`; simplest correct solution, no speculative work.
+- **When unsure, stop and flag** (`docs/templates/FLAG.md`) instead of guessing.
 
 ## 9. Local infra
 

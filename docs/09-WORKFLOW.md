@@ -89,9 +89,27 @@ criteria and test requirements unambiguous; for UI tasks, the `design/` drop exi
 green; coverage/mutation targets held; `lint typecheck test build` (+ e2e/int as
 required) pass; docs + `CLAUDE.md` updated; PR merged via review; no scope creep.
 
+## Stop-and-flag (can interrupt any step)
+
+At **any** point in the loop, if Claude Code hits ambiguity, conflicting sources, a
+security/data risk, scope creep, a destructive action, or a new/paid dependency, it
+**stops and raises a flag** (`docs/templates/FLAG.md`, `docs/14 §4`) instead of
+guessing. The planner reviews the flag, decides (updating `CLAUDE.md`/specs if it's a
+lasting rule), and replies; then the loop resumes. Flags are expected and welcome — a
+correct early flag is far cheaper than unwinding a wrong guess.
+
+```
+any step ── doubt/risk/conflict ──▶ 🚩 Flag ──▶ Planner reviews & decides ──▶ resume
+```
+
 ## Reviewer checklist (steps 3 and 7)
 - [ ] Plan/build matches the spec and stays inside the module's boundary.
-- [ ] Test requirements covered with the right types (`docs/08-TESTING.md`) - and the
+- [ ] **No over-engineering** — simplest solution that meets the spec; no speculative
+      abstraction/feature (`docs/14`).
+- [ ] **Security** holds (`docs/13`): input validated, tokens encrypted, authz
+      default-deny, webhooks verified, no secrets/PII in logs.
+- [ ] **Nothing ambiguous was silently guessed** — open questions were flagged.
+- [ ] Test requirements covered with the right types (`docs/08-TESTING.md`) — and the
       report shows them passing, not skipped.
 - [ ] Tenant queries scoped by `storeId`; isolation suite extended for new tables.
 - [ ] Money `BigInt` minor units; no floats; splits sum exactly.

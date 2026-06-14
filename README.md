@@ -28,8 +28,10 @@ services, so you can build and run the whole platform locally for free. See
 | [`docs/10-SETUP.md`](docs/10-SETUP.md) | Local folder, git, Claude Code connection |
 | [`docs/11-UI-DEVELOPMENT.md`](docs/11-UI-DEVELOPMENT.md) | Design-drop workflow + page-by-page UI specs (Shopify + portal) |
 | [`docs/12-DEPLOYMENT-RAILWAY.md`](docs/12-DEPLOYMENT-RAILWAY.md) | Railway hosting: services, DBs, cron, CI/CD |
+| [`docs/13-SECURITY.md`](docs/13-SECURITY.md) | Security best practices (strong, proportionate) |
+| [`docs/14-ENGINEERING-PRINCIPLES.md`](docs/14-ENGINEERING-PRINCIPLES.md) | No over-engineering · best practices · stop-and-flag protocol |
 | [`CLAUDE.md`](CLAUDE.md) | Executor context (read every session) |
-| [`docs/templates/`](docs/templates) | Planning prompt, implementation plan, build request, build summary + test report, PR review, module spec, test plan, ADR, bug report |
+| [`docs/templates/`](docs/templates) | Planning prompt, implementation plan, build request, build summary + test report, PR review, **flag**, module spec, test plan, ADR, bug report |
 | [`design/`](design) | Drop UI designs here for Claude Code to implement |
 
 ## How it's built

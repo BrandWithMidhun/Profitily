@@ -24,6 +24,10 @@
 ## Guardrail self-check
 - [ ] All tenant queries scoped by `storeId`; isolation suite extended if needed
 - [ ] Money `BigInt` minor units; no floats; splits sum exactly
+- [ ] **Security** (`docs/13`): input validated, tokens encrypted, authz default-deny,
+      webhooks verified, no secrets/PII in logs
+- [ ] **No over-engineering** (`docs/14`): simplest solution; nothing speculative
+- [ ] **No silent guesses** — ambiguities were flagged, not assumed
 - [ ] Idempotent webhooks/sync (replay test) — if applicable
 - [ ] No new paid dependency (or ADR attached: `docs/adr/NNNN-…`)
 - [ ] No secrets committed; `.env.example` updated

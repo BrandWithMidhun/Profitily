@@ -10,6 +10,10 @@
 > **UI tasks** (wizard, dashboards, settings) follow `docs/11-UI-DEVELOPMENT.md` and
 > consume the matching `design/<surface>/<slug>/` drop. They run only after the data
 > API they render exists. **Deployment** targets Railway (`docs/12`).
+>
+> **Every task** applies `docs/13-SECURITY.md` (strong security) and
+> `docs/14-ENGINEERING-PRINCIPLES.md` (no over-engineering; **stop and flag** on any
+> doubt instead of guessing).
 
 ---
 

@@ -44,6 +44,10 @@ Tick what applies; each ticked item must exist and pass.
 ## 7. Guardrails (must hold)
 - Tenant queries scoped by `storeId`.
 - Money as `BigInt` minor units; no floats; exact splits.
+- **Security** per `docs/13` — validate input, encrypt tokens, default-deny authz,
+  verify webhooks, no secrets/PII in logs.
+- **No over-engineering** (`docs/14`) — simplest solution that meets the criteria.
+- **Stop and flag** (`docs/templates/FLAG.md`) on any ambiguity/risk — don't guess.
 - No new paid dependency (else attach an ADR).
 - Secrets via typed config; `.env.example` updated for new keys.
 

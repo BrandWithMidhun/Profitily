@@ -30,8 +30,16 @@ Branch: `task/TASK-XXX-<slug>` · Commits: <n> · PR: <link/diff>
 
 **Skipped / quarantined tests:** <none / list with reason> (none hidden).
 
-## 4. Deviations from the plan
-<None / list each with reason.>
+## 4. Deviations, assumptions & open flags
+- **Deviations from the plan:** <none / list each with reason.>
+- **Assumptions made:** <none / any assumption made where the spec was thin — disclose
+  it so the planner can confirm; if it was material it should have been a flag.>
+- **Open flags:** <none / link any `FLAG` still awaiting a decision.>
+
+## 4a. Security & simplicity self-check
+- [ ] Input validated; tokens/secrets handled per `docs/13`; authz default-deny;
+      webhooks verified; no secrets/PII in logs.
+- [ ] No over-engineering — simplest solution that meets the criteria (`docs/14`).
 
 ## 5. Docs updated
 - [ ] `docs/<…>` · [ ] `CLAUDE.md` (if conventions changed) · [ ] `.env.example`
