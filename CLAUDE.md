@@ -106,7 +106,10 @@ conflicts with the spec's data contract, implement the contract and flag the mis
 
 ## 6. Git & commits
 
-- Branches: `task/TASK-012-shopify-oauth`, `fix/...`, `chore/...`, `test/...`.
+- **Branch model:** long-lived `main` (→ Railway **production**) and `develop` (→ Railway
+  **staging**). Feature work branches off `develop`: `task/TASK-012-shopify-oauth`,
+  `fix/...`, `chore/...`, `test/...`. **PRs target `develop`, never `main` directly.**
+  Merging to `develop` auto-deploys staging (CI-gated); releases promote `develop→main`.
 - **Conventional Commits:** `feat(api): ...`, `fix(core): ...`, `test(core): ...`,
   `docs: ...`, `chore(db): ...`.
 - Atomic commits; no "wip"/"misc" dumps. Check `git status` before every commit.

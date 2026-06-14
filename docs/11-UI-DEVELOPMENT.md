@@ -5,6 +5,10 @@ reads the matching page spec here plus that drop, and implements the real compon
 Covers both surfaces: the **Shopify embedded app** (Polaris) and the **Profitily
 portal** (our own SaaS).
 
+> Designing the portal in **Lovable**? See `docs/15-UI-DESIGN-LOVABLE.md` for page
+> features, user flows, ready-to-paste prompts, and how the generated code is imported
+> into `apps/web`. This doc remains the implementation contract (routes, data, states).
+
 ---
 
 ## 1. The design-drop workflow

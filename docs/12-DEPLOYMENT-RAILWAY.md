@@ -25,6 +25,9 @@ All services talk over **private networking**; only web/shopify-app/api expose p
 domains. `api` and `worker` share `redis` for the BullMQ queue (no direct api↔worker
 link needed).
 
+> **Two environments, branch-mapped:** the `staging` environment's services deploy from
+> **`develop`**, the `production` environment's from **`main`** (see §7).
+
 ## 2. Databases on Railway
 - **Postgres + TimescaleDB:** deploy the **TimescaleDB template/image**
   (`timescale/timescaledb:*-pg16`) as a service with a **persistent volume** — it's
@@ -71,16 +74,65 @@ Migrations must be backward-compatible during rolling deploys (expand-then-contr
 - **Continuous data jobs** (sync, snapshot recompute, alert eval): **BullMQ repeatable
   jobs** in the always-on `worker` service — not cron — so they retry and scale.
 
-## 7. Environments & CI/CD
-- Use Railway **environments**: `staging` and `production` (separate Shopify app creds,
-  separate DBs).
-- **Deploys:** GitHub integration auto-deploys on push to the mapped branch
-  (`main`→staging, tag/`release`→production), or use the **Railway CLI** from GitHub
-  Actions after CI passes. Gate production deploys on green CI (the pipeline in
-  `docs/08 §5`).
-- **Secrets:** set in Railway per environment (never in the repo). Mirror the keys in
-  `.env.example`. Generate `api`/`web`/`shopify-app` public domains under Settings →
-  Networking.
+## 7. Git → Railway auto-deploy (CI-gated)
+
+**Branch model → environment mapping:**
+
+| Git branch | Railway environment | Trigger | Gate |
+|---|---|---|---|
+| `develop` | **staging** | auto-deploy on **every merge** to `develop` | **Wait for CI** (GitHub Actions must pass) |
+| `main` | **production** | auto-deploy on merge/promotion to `main` | **Wait for CI** + green required checks |
+
+Flow: feature branch `task/TASK-XXX` → PR into **`develop`** → CI runs → on merge,
+Railway auto-deploys `develop` to **staging**. Releases promote `develop → main` (PR or
+fast-forward) → Railway auto-deploys **production**. This is the "merge to develop =
+auto-deploy" pipeline.
+
+### One-time wiring (per environment, per service)
+1. **Connect the repo:** install the **Railway GitHub App** on the repo (needs a
+   project member with contributor access).
+2. **Set each service's connected branch** to the environment's branch: services in the
+   `staging` environment → `develop`; services in `production` → `main`. Railway
+   auto-deploys on push to that branch.
+3. **Enable "Wait for CI"** in each service's settings so Railway holds the deploy in
+   `WAITING` until GitHub Actions succeed, and **SKIPS** it if any workflow fails.
+   ⚠️ Wait-for-CI checks **all** GitHub check suites on the commit — remove stale/old
+   check apps so an unrelated failing check can't block deploys.
+4. **Set Watch Paths** per service (e.g. `apps/api/**`, `packages/**`) so a change to
+   one app doesn't rebuild the others (works with focused PR environments).
+5. **Config-as-code:** commit a `railway.json`/`railway.toml` per app (overrides
+   dashboard). Example `apps/api/railway.json`:
+   ```json
+   {
+     "$schema": "https://railway.com/railway.schema.json",
+     "build": { "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter @profitily/api build" },
+     "deploy": {
+       "startCommand": "pnpm --filter @profitily/api start",
+       "preDeployCommand": "pnpm --filter @profitily/db migrate:deploy",
+       "healthcheckPath": "/health",
+       "restartPolicyType": "ON_FAILURE"
+     }
+   }
+   ```
+6. **Healthcheck** (`/health`) so a bad release doesn't take traffic; **restart policy**
+   on failure.
+
+### Secrets & domains
+Set secrets in Railway **per environment** (never in the repo); mirror keys in
+`.env.example`. Generate public domains for `web`/`shopify-app`/`api` under Settings →
+Networking (one set per environment; register the staging vs prod `shopify-app` domain
+in the matching Shopify app).
+
+### Optional: deploy via GitHub Actions + CLI
+If you prefer driving deploys from CI (instead of native branch auto-deploy), run
+`railway up --ci --service <svc>` in a workflow after tests pass, authenticated with a
+**Project Token** scoped to the target environment. Native branch auto-deploy +
+"Wait for CI" is simpler and is the default for this project.
+
+### Rollback
+Re-deploy a previous deployment from the Railway dashboard, or `railway redeploy
+--deployment <id>`. Migrations must be backward-compatible (expand-then-contract) so a
+rollback of app code is safe against the already-migrated DB.
 
 ## 8. Shopify specifics
 - The `shopify-app` public Railway domain is the app URL + webhook/OAuth callback
@@ -100,5 +152,7 @@ production.
 - [ ] Object storage decided (MinIO vol vs R2/S3) via ADR; `S3_*` set.
 - [ ] AI escalation configured + cached; spend logging on.
 - [ ] Staging + production environments; Shopify creds + domains per env.
+- [ ] **Connected branches set: `develop`→staging, `main`→production; "Wait for CI" on
+      every service; watch paths per app; `railway.json` committed.**
 - [ ] Production deploy gated on green CI; secrets set in Railway, not in git.
 - [ ] OSS observability shipping (OTel→Prometheus/Grafana/Loki; GlitchTip).

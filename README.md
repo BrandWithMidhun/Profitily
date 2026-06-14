@@ -30,6 +30,7 @@ services, so you can build and run the whole platform locally for free. See
 | [`docs/12-DEPLOYMENT-RAILWAY.md`](docs/12-DEPLOYMENT-RAILWAY.md) | Railway hosting: services, DBs, cron, CI/CD |
 | [`docs/13-SECURITY.md`](docs/13-SECURITY.md) | Security best practices (strong, proportionate) |
 | [`docs/14-ENGINEERING-PRINCIPLES.md`](docs/14-ENGINEERING-PRINCIPLES.md) | No over-engineering · best practices · stop-and-flag protocol |
+| [`docs/15-UI-DESIGN-LOVABLE.md`](docs/15-UI-DESIGN-LOVABLE.md) | Designing the portal UI in Lovable: features, flows, prompts, import |
 | [`CLAUDE.md`](CLAUDE.md) | Executor context (read every session) |
 | [`docs/templates/`](docs/templates) | Planning prompt, implementation plan, build request, build summary + test report, PR review, **flag**, module spec, test plan, ADR, bug report |
 | [`design/`](design) | Drop UI designs here for Claude Code to implement |
@@ -37,9 +38,10 @@ services, so you can build and run the whole platform locally for free. See
 ## How it's built
 
 A **planner/reviewer** Claude conversation owns the roadmap and reviews diffs;
-**Claude Code** executes one **Build Request** at a time on a branch. Git is the
-coordination layer; `CLAUDE.md` is the standing brief. See
-[`docs/09-WORKFLOW.md`](docs/09-WORKFLOW.md).
+**Claude Code** executes one **Build Request** at a time on a branch off `develop`. Git
+is the coordination layer; `CLAUDE.md` is the standing brief. Merging to `develop`
+**auto-deploys to Railway staging** (CI-gated); `main` deploys production. See
+[`docs/09-WORKFLOW.md`](docs/09-WORKFLOW.md) and [`docs/12-DEPLOYMENT-RAILWAY.md`](docs/12-DEPLOYMENT-RAILWAY.md).
 
 ## Quick start
 

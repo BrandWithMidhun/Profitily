@@ -25,7 +25,7 @@
 | TASK-003 | `packages/db`: Prisma + tenancy models (`Store/User/Membership/Subscription`), first migration, Timescale SQL step, seed. **Migration tests.** | Migration applies clean + on-existing; `db:seed` works; migration test green. | TODO |
 | TASK-004 | `apps/api` NestJS skeleton: health route, Prisma module, **tenant guard**, error/logging middleware, OTel init. | `/health` 200; **tenant-isolation unit test** proves unscoped query is rejected. | TODO |
 | TASK-005 | `apps/web` + `apps/shopify-app` skeletons (App Router, Tailwind; Polaris). Shared layout, auth stub. | Both build & boot; **Playwright smoke** loads each app. | TODO |
-| TASK-006 | **CI pipeline** (GitHub Actions): install, lint, typecheck, unit+integration, build; **security scan** (Gitleaks, npm audit, Semgrep). Branch protection. | CI green on a trivial PR; secret scan runs; protection documented. | TODO |
+| TASK-006 | **CI pipeline** (GitHub Actions): install, lint, typecheck, unit+integration, build; **security scan** (Gitleaks, npm audit, Semgrep) on PRs into `develop`. Branch protection on `main`+`develop`. | CI green on a trivial PR into `develop`; secret scan runs; protection documented. | TODO |
 | TASK-007 | **Test harness**: Testcontainers helper (PG/Redis/MinIO), Playwright config, fast-check + Stryker + k6 + Pact wiring, coverage thresholds. | `pnpm test:int`, `test:e2e`, `test:load`, `test:mutation` commands run end-to-end. | TODO |
 | TASK-008 | **UI foundation**: app shell (P0/S2), design tokens from `design/tokens`, Polaris (shopify-app) + Tailwind/shadcn (portal) setup, component-test + axe + visual-snapshot harness. | Shell renders with nav/store-switcher/date-range; **RTL + axe + Playwright** smoke green; tokens applied. | TODO |
 
@@ -95,7 +95,7 @@
 | TASK-082 | Observability: OTel+Prometheus+Grafana+Loki dashboards; GlitchTip; per-store sync views. | Dashboards live; alert on sync failure; errors captured. | TODO |
 | TASK-083 | Billing edge cases (up/downgrade, dunning); uninstall retention. | **Integration tests** for tier changes + uninstall policy. | TODO |
 | TASK-084 | **Mutation testing pass (Stryker)** on `packages/core`; raise weak tests. | Mutation score ≥ target (set in `docs/08`); gaps fixed. | TODO |
-| TASK-085 | **Railway deployment** (`docs/12`): services (web/shopify-app/api/worker/cron) + Timescale + Redis; per-app build/start + watch paths; pre-deploy migrations; staging+prod envs; CI-gated deploy. | Staging deploy live end-to-end; migrations run pre-deploy; webhooks reach `shopify-app` domain. | TODO |
+| TASK-085 | **Railway deployment + Git auto-deploy** (`docs/12`): services (web/shopify-app/api/worker/cron) + Timescale + Redis; `railway.json` per app; connected branches `develop`→staging & `main`→production with **Wait for CI**; watch paths; pre-deploy migrations; CI-gated. | Merge to `develop` auto-deploys staging after CI passes; migrations run pre-deploy; webhooks reach the staging `shopify-app` domain; rollback verified. | TODO |
 
 ## Backlog (roadmap)
 WooCommerce/BigCommerce/Magento · Amazon/Walmart/Etsy · CFO platform (cash-flow

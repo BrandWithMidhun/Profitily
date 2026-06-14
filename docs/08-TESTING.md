@@ -123,11 +123,14 @@ Coverage thresholds are enforced in `vitest.config` and fail CI if breached.
 ## 5. CI wiring (GitHub Actions)
 | Stage | Runs on | Includes |
 |---|---|---|
-| **PR (required)** | every PR | static, unit, property, integration (Testcontainers), contract, component, secret scan, dependency audit, SAST, affected E2E |
+| **PR (required)** | every PR **into `develop`** | static, unit, property, integration (Testcontainers), contract, component, secret scan, dependency audit, SAST, affected E2E |
 | **Nightly** | schedule | full E2E, visual regression, a11y, load (k6), mutation (Stryker), DAST (ZAP) |
-| **Pre-release** | tag | everything + migration tests on a prod-like snapshot |
+| **Pre-release** | PR `develop`→`main` / tag | everything + migration tests on a prod-like snapshot |
 
 Turborepo runs only **affected** packages' tests on PRs for speed; nightly runs all.
+Railway's **"Wait for CI"** holds each environment's deploy until these GitHub Actions
+pass — a red pipeline means `develop`/staging (and `main`/production) **do not deploy**
+(`docs/12 §7`).
 
 ## 6. Local commands
 ```bash

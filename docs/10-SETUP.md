@@ -27,9 +27,12 @@ git commit -m "chore: scaffold docs, schema, plan, templates"
 git remote add origin git@github.com:<you>/profitily-ai.git
 git branch -M main
 git push -u origin main
+# create the long-lived develop branch (auto-deploys to Railway staging)
+git checkout -b develop && git push -u origin develop
 ```
-Enable **branch protection** on `main` (require PR + passing CI) so executor work
-always goes through review.
+Enable **branch protection** on `main` **and** `develop` (require PR + passing CI).
+Feature branches start from `develop`; PRs target `develop`. See `docs/12 §7` for the
+branch→environment auto-deploy mapping.
 
 ## 4. Install Claude Code
 **Native (recommended, no Node):**

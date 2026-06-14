@@ -77,8 +77,10 @@ Planner verifies every acceptance criterion is met, the right tests exist **and 
 the test report is credible (no skipped/quarantined tests hiding failures), and all
 guardrails hold (tenant scoping, money integers, idempotency, no unapproved paid deps).
 - **Changes needed -> specific change requests -> back to (5)** (same branch).
-- **All good -> APPROVE -> merge to `main`, delete branch, mark task `DONE`, set the
-  next `ACTIVE TASK`, and move to the next module/task (back to (1)).**
+- **All good -> APPROVE -> merge to `develop`** (PR target), delete branch, mark task
+  `DONE`, set the next `ACTIVE TASK`, move to the next module/task (back to (1)). The
+  merge **auto-deploys to Railway staging** once CI passes (`docs/12 §7`); releases
+  promote `develop -> main` to deploy production.
 
 ## Gates
 
@@ -87,7 +89,8 @@ criteria and test requirements unambiguous; for UI tasks, the `design/` drop exi
 
 **Definition of Done (after step 7):** acceptance criteria met; all required tests
 green; coverage/mutation targets held; `lint typecheck test build` (+ e2e/int as
-required) pass; docs + `CLAUDE.md` updated; PR merged via review; no scope creep.
+pass; docs + `CLAUDE.md` updated; PR merged into `develop` via review (auto-deploys
+staging); no scope creep.
 
 ## Stop-and-flag (can interrupt any step)
 
