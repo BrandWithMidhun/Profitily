@@ -62,12 +62,13 @@ TikTok) → enter dashboard.
 - Dashboard p95 < 2s for a 50k-order store (pre-aggregated reads).
 - Observability per store (sync health, job metrics) — using OSS tooling.
 
-## 8. Currency / region decision (resolve before TASK-001)
-The source spec mixes ₹ examples (Shiprocket/Delhivery/Razorpay) with USD pricing.
-**Default assumption: multi-currency-aware from day one** (every money row carries a
-currency; per-store base currency). India-specific providers ship first because the
-examples are India-centric; US providers (e.g. ShipStation/Stripe-heavy flows) follow.
-Planner: confirm or override.
+## 8. Currency / region (DECIDED — see ADR 0001)
+**Multi-currency, per store.** Each store has a single `baseCurrency` read from Shopify
+at install; all profit math and dashboards are in that currency. Orders in a different
+presentment currency are normalized to the store base currency at ingestion using the
+rate Shopify provides on the order; no cross-store currency mixing. India-specific
+providers (Shiprocket/Delhivery/Razorpay) ship first because the examples are
+India-centric; other regions follow. See `docs/adr/0001-multi-currency-store-base.md`.
 
 ## 9. Out of scope (v1)
 Non-Shopify platforms (WooCommerce/BigCommerce/Magento), marketplaces

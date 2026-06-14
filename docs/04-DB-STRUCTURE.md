@@ -37,7 +37,7 @@ model Store {
   id            String   @id @default(cuid())
   shopDomain    String   @unique
   accessToken   String   // encrypted at rest
-  baseCurrency  String   @default("INR")
+  baseCurrency  String   @default("USD") // set from Shopify shop currency at install (ADR 0001)
   country       String?
   plan          PlanTier @default(FREE)
   installedAt   DateTime @default(now())
@@ -479,6 +479,11 @@ model ProcessedEvent {         // idempotency ledger
 - `ProductCost(storeId, variantId, effectiveFrom)` supports temporal cost resolution.
 
 ## 3. Data-integrity rules
+- **Store base currency:** `Store.baseCurrency` is read from Shopify at install. Profit
+  math and snapshots are in the store base currency. If an order's presentment currency
+  differs, normalize amounts to base at ingestion using the order's Shopify exchange
+  rate; retain the original currency/amounts for reference. Never mix currencies in a
+  computation (the `Money` type enforces this). See ADR 0001.
 - **Temporal product cost:** an order uses the `ProductCost` whose
   `[effectiveFrom, effectiveTo)` contains `placedAt`.
 - **No raw PII columns:** customer email stored as `emailHash`; plaintext only behind
