@@ -103,3 +103,9 @@ Claude Code   ──▶  merge on approval; planner marks DONE, sets next ACTIVE
 - npm update/permission errors → switch to the native installer.
 - Webhooks not arriving → tunnel down or URL not registered in the Shopify dev app.
 - Containers unhealthy → `docker compose logs <svc>`; ensure ports free.
+
+## 11. Next steps
+- **Designing UI?** Drop pages into `design/<surface>/<slug>/` per
+  `docs/11-UI-DEVELOPMENT.md` so Claude Code can implement them.
+- **Deploying?** Follow `docs/12-DEPLOYMENT-RAILWAY.md` (Railway services, Timescale,
+  Redis, cron, CI-gated deploys). Dev stays local/free; Railway is staging/prod.

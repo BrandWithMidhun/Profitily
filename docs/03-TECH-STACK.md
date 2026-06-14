@@ -73,7 +73,7 @@ build; production API usage is metered by the provider, not by us.
 | Error tracking | GlitchTip (self-host) | Sentry SaaS | optional convenience |
 | APM/observability | OTel+Prometheus+Grafana+Loki | Datadog / New Relic | avoid |
 | CI | GitHub Actions free | paid runners | heavy parallel CI |
-| Hosting | VPS + Docker / Coolify (OSS PaaS) | Vercel / Fly paid | prod scaling |
+| Hosting | local Docker / Coolify (OSS PaaS) | **Railway** (chosen host) | staging/prod — see `docs/12` |
 
 > **What stays inherently metered:** Shopify/ad/shipping provider production API calls
 > and (only if escalated) Claude/OpenAI tokens. Both are minimized by design (caching,

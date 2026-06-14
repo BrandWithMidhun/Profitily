@@ -1,57 +1,112 @@
-# 09 — Workflow: Planner / Reviewer + Claude Code Executor
+# 09 — Build Process (Planner ↔ Claude Code Loop)
 
-A **two-role loop** coordinated through git and standardized **templates**.
-
-```
-┌──────────────────────────┐   Build Request (template)   ┌──────────────────────────┐
-│  Planning Claude (chat)  │ ───────────────────────────▶ │   Claude Code (terminal) │
-│  • owns roadmap & specs  │                              │   • reads CLAUDE.md      │
-│  • writes Build Requests │ ◀─────────────────────────── │   • branch→code→test→PR  │
-│  • reviews PRs           │      PR (review template)     │                          │
-└──────────────────────────┘                              └──────────────────────────┘
-                  └──────────────── git repo (branches, PRs, docs) ───────────────┘
-```
+This is the **exact, step-by-step process** for building each module/task. Two roles,
+seven steps, coordinated through git and standardized templates. Nothing gets built
+until a plan is reviewed; nothing merges until a summary + test report is reviewed.
 
 ## Roles
-**Planner / Reviewer (this Claude conversation)** — maintains `docs/07-PROJECT-PLAN.md`
-and specs; issues one **Build Request** at a time; reviews returned PRs against
-acceptance criteria, guardrails, and test requirements; approves or sends specific
-changes; prevents scope creep.
+- **Planner / Reviewer** = this Claude conversation. Owns the roadmap and specs.
+  Issues planning prompts, reviews plans, issues build requests, reviews summaries +
+  test reports, approves/merges, advances the board.
+- **Executor** = Claude Code in the repo. Produces plans, builds, tests, and reports.
+  Never self-approves.
 
-**Executor (Claude Code)** — reads `CLAUDE.md` each session; implements the Build
-Request on a branch (plan → tests → code → quality gates → docs); opens a PR with the
-review template; waits for approval; never self-merges.
+## The loop (per task / module)
 
-## The loop
-1. **Plan turn.** Planner fills `docs/templates/BUILD-REQUEST.md` for the active task
-   and pastes it to Claude Code.
-2. **Execute turn.** Claude Code branches, posts a short implementation plan, builds,
-   runs `lint typecheck test (+e2e/int as required) build`, commits (Conventional
-   Commits), opens a PR using `docs/templates/PR-REVIEW.md`.
-3. **Review turn.** Paste the PR/diff back to the planner. Planner applies the review
-   checklist → APPROVE or change requests.
-4. **Merge turn.** On approval, merge to `main`, delete branch; planner sets the task
-   `DONE` and the next `ACTIVE TASK`.
+```
+            ┌─────────────────────────────────────────────────────────────┐
+            │                         PER TASK                              │
+            │                                                               │
+  (1) Planner - Planning Prompt --> (2) Claude Code - Implementation Plan -+|
+            │                                                            │  │
+            │  <--------------- (3) Planner reviews plan <---------------+  │
+            │        │ changes? -> back to (2)       │ approved             │
+            │        v                               v                      │
+            │  (4) Planner - Build Request --> (5) Claude Code builds+tests │
+            │                                       │                       │
+            │           (6) Claude Code - Build Summary + Test Report ----->│
+            │                                       │                       │
+            │  (7) Planner reviews summary + report │                       │
+            │        │ changes? -> back to (5)      │ approved              │
+            │        v                              v                       │
+            │   (iterate on same branch)      merge -> mark DONE            │
+            └───────────────────────────────────────┬───────────────────────┘
+                                                     v
+                                       advance to next module/task -> (1)
+```
 
-## Reviewer checklist (every PR)
-- [ ] Meets **all** acceptance criteria in the Build Request.
-- [ ] **Test requirements met** — the right test types exist and pass (`docs/08`).
-- [ ] Every tenant query scoped by `storeId`; isolation suite extended for new tables.
-- [ ] Money is `BigInt` minor units; no floats; splits sum exactly.
+## Step-by-step
+
+### (1) Planner -> Claude Code: **Planning Prompt**
+Template: `docs/templates/PLANNING-PROMPT.md`. The planner gives the task id, goal, the
+spec sections to read, dependencies, and asks Claude Code to **produce a plan, not
+code**. For UI tasks it also points to the matching `design/` drop (see
+`docs/11-UI-DEVELOPMENT.md`).
+
+### (2) Claude Code -> Planner: **Implementation Plan**
+Template: `docs/templates/IMPLEMENTATION-PLAN.md`. Claude Code reads `CLAUDE.md` + the
+referenced specs and returns: files to create/change, approach, interfaces/contracts,
+**test plan** (which test types from `docs/08-TESTING.md`), data/migration impact,
+risks, ordered steps, and open questions. **No code is written yet.**
+
+### (3) Planner: **Review the plan**
+Planner checks the plan against the spec, module boundaries, guardrails, and test
+coverage. **Changes requested -> back to (2).** When the plan is sound -> proceed. This
+catches design problems before any code exists (cheapest place to fix them).
+
+### (4) Planner -> Claude Code: **Build Request**
+Template: `docs/templates/BUILD-REQUEST.md`. The planner locks the approved scope into a
+build request: final acceptance criteria, the agreed interfaces, and the explicit
+**test requirements**. This is the contract Claude Code builds to.
+
+### (5) Claude Code: **Build + Test**
+On a branch `task/TASK-XXX-slug`: implement (TDD for `packages/core`), then run the
+required gates - `pnpm lint typecheck test` plus `test:int`, `test:e2e`,
+`test:contract`, etc. as the request specifies. Commit in atomic Conventional Commits.
+
+### (6) Claude Code -> Planner: **Build Summary + Test Report**
+Template: `docs/templates/BUILD-SUMMARY.md`. Claude Code returns: what was built, how it
+maps to each acceptance criterion, and a **test report** - results per test type,
+coverage %, mutation score (if core), e2e/visual/a11y outcomes, load numbers,
+security-scan results - plus deviations from the plan and any follow-ups. The PR body
+uses `docs/templates/PR-REVIEW.md`; the Build Summary is what's pasted back to the
+planner.
+
+### (7) Planner: **Review summary + test report -> advance or iterate**
+Planner verifies every acceptance criterion is met, the right tests exist **and pass**,
+the test report is credible (no skipped/quarantined tests hiding failures), and all
+guardrails hold (tenant scoping, money integers, idempotency, no unapproved paid deps).
+- **Changes needed -> specific change requests -> back to (5)** (same branch).
+- **All good -> APPROVE -> merge to `main`, delete branch, mark task `DONE`, set the
+  next `ACTIVE TASK`, and move to the next module/task (back to (1)).**
+
+## Gates
+
+**Definition of Ready (before step 4):** plan approved; dependencies `DONE`; acceptance
+criteria and test requirements unambiguous; for UI tasks, the `design/` drop exists.
+
+**Definition of Done (after step 7):** acceptance criteria met; all required tests
+green; coverage/mutation targets held; `lint typecheck test build` (+ e2e/int as
+required) pass; docs + `CLAUDE.md` updated; PR merged via review; no scope creep.
+
+## Reviewer checklist (steps 3 and 7)
+- [ ] Plan/build matches the spec and stays inside the module's boundary.
+- [ ] Test requirements covered with the right types (`docs/08-TESTING.md`) - and the
+      report shows them passing, not skipped.
+- [ ] Tenant queries scoped by `storeId`; isolation suite extended for new tables.
+- [ ] Money `BigInt` minor units; no floats; splits sum exactly.
 - [ ] Webhooks/sync idempotent (replay test present).
 - [ ] Pure logic in `packages/core`, unit + property tested.
-- [ ] No new paid dependency without an ADR (cost philosophy upheld).
-- [ ] `lint`, `typecheck`, `test`, `build` (+ `test:e2e`/`:int` when relevant) pass.
-- [ ] Docs/`CLAUDE.md` updated for schema/API/convention changes.
-- [ ] No secrets committed; `.env.example` updated for new config.
-- [ ] No scope beyond the task.
+- [ ] No new paid dependency without an ADR.
+- [ ] Docs/`CLAUDE.md` updated; no secrets committed; `.env.example` current.
+- [ ] No scope beyond the build request.
 
-## Keeping roles in sync
-- **`CLAUDE.md` is the contract** — update it in the same change when conventions move.
-- **The plan file is the memory** — statuses + `ACTIVE TASK` rehydrate a fresh session.
-- **Templates standardize handoff** — requests, reviews, module specs, test plans,
-  ADRs, and bug reports all have a fixed shape so nothing is forgotten.
+## Why the extra plan step matters
+Reviewing the **plan** before the **build** means design mistakes are caught as text,
+not as code that must be unwound. Reviewing the **test report** before merge means
+"done" is evidence-based. Both keep the loop fast and `main` always green.
 
 ## Rehydrating a fresh Claude Code session
-> Read `CLAUDE.md` and `docs/07-PROJECT-PLAN.md`. State the current `ACTIVE TASK` and
-> your implementation plan (files + tests) before writing code.
+> Read `CLAUDE.md` and `docs/07-PROJECT-PLAN.md`. State the current `ACTIVE TASK`. If I
+> sent a Planning Prompt, return an Implementation Plan (no code). If I sent a Build
+> Request, state your branch and build to it.

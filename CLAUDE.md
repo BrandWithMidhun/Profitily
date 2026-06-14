@@ -40,6 +40,7 @@ paid/managed service when the planner approves it via an ADR. See
 | Observability | OpenTelemetry + Prometheus + Grafana + Loki | Datadog — avoid |
 | Error tracking | **GlitchTip** (Sentry-compatible, OSS) | hosted Sentry — avoid |
 | CI | GitHub Actions (free tier) | — |
+| Hosting | local Docker (dev) | **Railway** (staging/prod) — accepted host; see `docs/12` |
 | Monorepo | pnpm workspaces + Turborepo | — |
 
 > Rule: prefer a library/extension over a new managed service. Adding any paid
@@ -67,22 +68,27 @@ profitily-ai/
 Pure business logic (money math) lives in `packages/core` with **zero I/O** so it is
 fully unit- and property-testable. Apps/workers call into it.
 
-## 5. The work loop
+## 5. The build loop (see `docs/09-WORKFLOW.md` for the full process)
 
-1. **Receive a Build Request** (planner). It states goal, scope, interfaces,
-   acceptance criteria, and **test requirements**. If anything is ambiguous, stop and
-   ask before coding.
-2. **Branch:** `git checkout -b task/TASK-XXX-slug`. Never commit to `main`.
-3. **Plan first.** Post a short plan (files, approach, tests) and confirm it satisfies
-   the acceptance criteria.
-4. **TDD where it pays:** for `packages/core` and any pure logic, write tests first.
-5. **Implement + test.** Meet the test requirements in the request (see
-   `docs/08-TESTING.md` for what each type means and which tool to use).
-6. **Run all quality gates** (section 7). State which passed.
-7. **Update docs** (`docs/*`, this file) in the same commit if schema/API/conventions
-   changed.
-8. **Open a PR** using `docs/templates/PR-REVIEW.md`; hand back to the reviewer. Do
-   not self-merge.
+Seven steps per task; you never self-approve:
+1. **Planning Prompt** (planner → you) → 2. you return an **Implementation Plan**
+   (`docs/templates/IMPLEMENTATION-PLAN.md`), **no code yet** → 3. planner reviews the
+   plan → 4. planner sends a **Build Request** (`docs/templates/BUILD-REQUEST.md`) →
+   5. you **build + test** on `task/TASK-XXX-slug` → 6. you return a **Build Summary +
+   Test Report** (`docs/templates/BUILD-SUMMARY.md`) + open a PR
+   (`docs/templates/PR-REVIEW.md`) → 7. planner reviews; changes → iterate on the same
+   branch; approved → merge → next task.
+
+Within step 5: TDD for `packages/core` and pure logic; meet every test requirement in
+the request (`docs/08-TESTING.md`); run all quality gates (section 7) and state which
+passed; update `docs/*` and this file in the same commit if schema/API/conventions
+changed.
+
+**UI tasks:** before implementing, read `docs/11-UI-DEVELOPMENT.md` for the page spec
+**and** the matching drop in `design/<surface>/<slug>/`. Use the `frontend-design`
+skill + tokens from `design/tokens/`. Implement loading/empty/error states; add
+component (RTL), E2E (Playwright), axe a11y, and a visual snapshot. If the drop
+conflicts with the spec's data contract, implement the contract and flag the mismatch.
 
 ## 6. Git & commits
 

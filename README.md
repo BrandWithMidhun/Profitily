@@ -24,10 +24,13 @@ services, so you can build and run the whole platform locally for free. See
 | [`docs/06-PROFIT-ENGINE.md`](docs/06-PROFIT-ENGINE.md) | Core profit/cost/shipping/allocation math |
 | [`docs/07-PROJECT-PLAN.md`](docs/07-PROJECT-PLAN.md) | Phased, task-level execution board |
 | [`docs/08-TESTING.md`](docs/08-TESTING.md) | Full automation-testing strategy (every test type) |
-| [`docs/09-WORKFLOW.md`](docs/09-WORKFLOW.md) | Planner/reviewer + Claude Code executor loop |
+| [`docs/09-WORKFLOW.md`](docs/09-WORKFLOW.md) | The build process: planner ↔ Claude Code 7-step loop |
 | [`docs/10-SETUP.md`](docs/10-SETUP.md) | Local folder, git, Claude Code connection |
+| [`docs/11-UI-DEVELOPMENT.md`](docs/11-UI-DEVELOPMENT.md) | Design-drop workflow + page-by-page UI specs (Shopify + portal) |
+| [`docs/12-DEPLOYMENT-RAILWAY.md`](docs/12-DEPLOYMENT-RAILWAY.md) | Railway hosting: services, DBs, cron, CI/CD |
 | [`CLAUDE.md`](CLAUDE.md) | Executor context (read every session) |
-| [`docs/templates/`](docs/templates) | Build Request, PR review, module spec, test plan, ADR, bug report |
+| [`docs/templates/`](docs/templates) | Planning prompt, implementation plan, build request, build summary + test report, PR review, module spec, test plan, ADR, bug report |
+| [`design/`](design) | Drop UI designs here for Claude Code to implement |
 
 ## How it's built
 

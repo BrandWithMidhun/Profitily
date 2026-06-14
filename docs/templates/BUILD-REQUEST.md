@@ -11,6 +11,7 @@
 - Specs: `docs/<…>.md §<…>`
 - Depends on (must be DONE): `TASK-…`
 - Related code: `packages/…`, `apps/…`
+- UI (if applicable): page spec `docs/11-UI-DEVELOPMENT.md §<page>` + drop `design/<surface>/<slug>/`
 
 ## 3. Scope
 **In scope**
