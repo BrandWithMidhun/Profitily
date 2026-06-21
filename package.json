@@ -13,11 +13,19 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "infra:up": "docker compose -f tooling/docker-compose.yml --project-directory . up -d --wait && docker compose -f tooling/docker-compose.yml --project-directory . run --rm minio-init",
+    "infra:up:ai": "docker compose -f tooling/docker-compose.yml --project-directory . --profile ai up -d --wait && docker compose -f tooling/docker-compose.yml --project-directory . run --rm minio-init",
+    "infra:down": "docker compose -f tooling/docker-compose.yml --project-directory . --profile ai --profile init down --remove-orphans",
+    "smoke": "node --env-file-if-exists=.env --import tsx tooling/smoke.ts"
   },
   "devDependencies": {
     "@profitily/config": "workspace:*",
+    "@profitily/shared": "workspace:*",
+    "@types/pg": "^8.11.10",
+    "pg": "^8.13.1",
     "prettier": "^3.5.0",
+    "tsx": "^4.19.2",
     "turbo": "^2.5.0"
   }
 }
