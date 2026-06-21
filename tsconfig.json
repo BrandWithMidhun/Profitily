@@ -1,0 +1,4 @@
+{
+  "extends": "@profitily/config/tsconfig.base.json",
+  "files": []
+}

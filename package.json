@@ -1,0 +1,23 @@
+{
+  "name": "profitily-ai",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.1.2",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@profitily/config": "workspace:*",
+    "prettier": "^3.5.0",
+    "turbo": "^2.5.0"
+  }
+}

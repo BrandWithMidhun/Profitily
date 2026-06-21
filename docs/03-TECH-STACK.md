@@ -94,5 +94,7 @@ build; production API usage is metered by the provider, not by us.
    for observability and tier enforcement.
 
 ## 5. Versioning policy
-Pin major versions in `package.json`; renovate/Dependabot for security bumps. Node 22
-LTS, pnpm 9+, TypeScript strict. Record any stack change as an ADR.
+Pin major versions in `package.json`; renovate/Dependabot for security bumps. Node
+floor `>=22` (enforced via `engine-strict`); the project standardizes on **Node 24**
+via `.nvmrc`. pnpm 9+ (the repo pins **11.x** through the `packageManager` field).
+TypeScript strict. Record any stack change as an ADR.

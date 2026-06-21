@@ -6,8 +6,10 @@ Claude plan or Console API billing — the free Claude.ai plan doesn't include i
 Canonical install steps: <https://code.claude.com/docs/en/setup>.
 
 ## 1. Prerequisites
-- **Git** 2.23+ · **Docker** + Docker Compose · **Node.js 22 LTS** + **pnpm 9+** (npm
-  path) — or use the native Claude Code installer (no Node needed for the CLI itself).
+- **Git** 2.23+ · **Docker** + Docker Compose · **Node.js `>=22`** (project
+  standardizes on **Node 24** via `.nvmrc`) + **pnpm 9+** (repo pins **11.x** via
+  `packageManager`) (npm path) — or use the native Claude Code installer (no Node
+  needed for the CLI itself).
 
 ## 2. Project folder
 Put the repo files in e.g. `~/projects/profitily-ai` (unzip there if you downloaded
