@@ -21,7 +21,7 @@
 | ID | Task | Acceptance criteria (incl. tests) | Status |
 |---|---|---|---|
 | TASK-001 | Monorepo (pnpm+Turborepo), `packages/config` (eslint+security, tsconfig, prettier, **vitest preset**), root scripts. | `pnpm install/lint/typecheck/build` pass on empty workspace; `pnpm test` runs (0 tests OK). | REVIEW |
-| TASK-002 | `tooling/docker-compose.yml`: Postgres+Timescale, Redis/Valkey, MinIO, Mailpit, Ollama. `.env.example` + typed config. | `docker compose up` healthy; api reads config; smoke test connects to each service. | TODO |
+| TASK-002 | `tooling/docker-compose.yml`: Postgres+Timescale, Redis/Valkey, MinIO, Mailpit, Ollama. `.env.example` + typed config. | `docker compose up` healthy; api reads config; smoke test connects to each service. | REVIEW |
 | TASK-003 | `packages/db`: Prisma + tenancy models (`Store/User/Membership/Subscription`), first migration, Timescale SQL step, seed. **Migration tests.** | Migration applies clean + on-existing; `db:seed` works; migration test green. | TODO |
 | TASK-004 | `apps/api` NestJS skeleton: health route, Prisma module, **tenant guard**, error/logging middleware, OTel init. | `/health` 200; **tenant-isolation unit test** proves unscoped query is rejected. | TODO |
 | TASK-005 | `apps/web` + `apps/shopify-app` skeletons (App Router, Tailwind; Polaris). Shared layout, auth stub. | Both build & boot; **Playwright smoke** loads each app. | TODO |

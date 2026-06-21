@@ -14,7 +14,7 @@
 
 | Phase | Theme | Tasks done / total |
 |---|---|---|
-| Phase 0 | Foundation | 0 / 8 |
+| Phase 0 | Foundation | 1 / 8 |
 | Phase 1 | Shopify App, Auth & Billing | 0 / 5 |
 | Phase 2 | Data Ingestion | 0 / 4 |
 | Phase 3 | Cost Management & Shipping Engine | 0 / 4 |
@@ -24,8 +24,8 @@
 | Phase 7 | AI Layer | 0 / 5 |
 | Phase 8 | Hardening & Launch | 0 / 6 |
 
-> TASK-001 is in `REVIEW` (PR open into `develop`); it flips to **done** here once
-> merged.
+> TASK-001 is merged. TASK-002 is in `REVIEW` (PR open into `develop`); it flips to
+> **done** here once merged.
 
 ---
 
@@ -57,10 +57,45 @@
 - **Follow-ups:** CI pipeline to run these gates on PRs — **TASK-006**; coverage
   thresholds / first engine coverage — **TASK-050** (and harness in **TASK-007**).
 
+### TASK-002 — Local infra (Docker Compose) + typed env-config + smoke check
+- **Date:** 2026-06-21
+- **Branch:** `task/TASK-002-local-infra-config` → `develop`
+- **What shipped:**
+  - `tooling/docker-compose.yml`: healthchecked **Postgres+TimescaleDB**, **Valkey**,
+    **MinIO** (+ one-shot `mc` bucket-init for `profitily-reports`), **Mailpit**, and
+    **Ollama** (gated behind the opt-in `ai` profile). Named volumes; every image
+    pinned to a specific version tag (no `:latest`). Host ports are overridable via
+    `*_HOST_PORT` env vars (canonical defaults 5432/6379/9000/9001/1025/8025/11434).
+  - `packages/shared`: zod-validated `loadEnv()`/`Env` typed env loader mirroring
+    `.env.example` — strict on core/crypto vars, optional passthrough for
+    integration/Shopify/AI keys — with a secret-safe, aggregated failure message.
+  - `tooling/smoke.ts` + `pnpm smoke`: connects to PG (`SELECT 1` + TimescaleDB
+    extension availability), Redis/Valkey (PING), MinIO (`/health/live` **plus an
+    authenticated HeadBucket asserting the `profitily-reports` bucket exists**), and
+    Mailpit (SMTP `220`); redacted output; non-zero exit on any failure.
+  - Root scripts `infra:up` / `infra:up:ai` / `infra:down` / `smoke`; `tooling/README.md`.
+- **Security controls applied (`docs/13 §5,§11`):** secrets only via `.env`
+  (git-ignored); compose creds are explicit **local-only dev defaults**; env loader
+  **fails closed** with a **secret-safe** error (variable names only — values, incl.
+  `DATABASE_URL` password and `ENCRYPTION_KEY`, are never echoed); `ENCRYPTION_KEY`
+  length (≥32) and `JWT_SECRET` validated; smoke output redacted; **all images pinned**
+  (supply chain).
+- **Test cases covered:** env-loader **unit tests (14, Vitest)** — valid parse, typed
+  output, number/boolean coercion, defaults, optional keys, missing/invalid required
+  vars (postgres/redis URL, SMTP_PORT, ENCRYPTION_KEY), aggregated multi-error, and
+  **"no secret value in error"**. Live: `pnpm infra:up` → four core services **healthy**;
+  `pnpm infra:up:ai` → Ollama additionally healthy; `pnpm smoke` green with
+  **TimescaleDB v2.17.2 available**. All static gates (lint/typecheck/test/build) green.
+- **Notes / follow-ups:** verification ran on **alt host ports** (`DB_HOST_PORT=5433`,
+  `REDIS_HOST_PORT=6380`) because another local stack held 5432/6379 — the committed
+  defaults remain canonical; the override mechanism is the permanent solution. Prisma
+  schema/migrations/hypertables → **TASK-003**; CI wiring of these gates → **TASK-006**;
+  Testcontainers integration harness → **TASK-007**.
+
 ---
 
 ## Module completion matrix
 
 | Module | Status | Tasks | Key tables | Security verified | Tests |
 |---|---|---|---|---|---|
-| M00 Platform / Shared | in progress | TASK-001 (REVIEW), 002–008 | — | eslint-plugin-security active; engine-strict; frozen lockfile | sanity (Vitest) green; static gates green |
+| M00 Platform / Shared | in progress | TASK-001 (done), 002 (REVIEW), 003–008 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images | sanity + env-loader (15 Vitest) green; smoke green; static gates green |
