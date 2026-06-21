@@ -11,6 +11,7 @@
  */
 import net from 'node:net';
 
+import { HeadBucketCommand, S3Client } from '@aws-sdk/client-s3';
 import { loadEnv } from '@profitily/shared';
 import pg from 'pg';
 
@@ -76,12 +77,47 @@ async function checkRedis(redisUrl: string): Promise<string> {
   return 'PING → PONG';
 }
 
-async function checkMinio(endpoint: string): Promise<string> {
-  const res = await fetch(`${endpoint.replace(/\/$/, '')}/minio/health/live`);
+type S3Config = {
+  endpoint: string;
+  region: string;
+  forcePathStyle: boolean;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucket: string;
+};
+
+async function checkMinio(cfg: S3Config): Promise<string> {
+  // 1) Server liveness (unauthenticated health endpoint).
+  const res = await fetch(`${cfg.endpoint.replace(/\/$/, '')}/minio/health/live`);
   if (!res.ok) {
     throw new Error(`health/live returned HTTP ${res.status}`);
   }
-  return `health/live → HTTP ${res.status}`;
+
+  // 2) The reports bucket exists. Anonymous requests get 403 whether or not the
+  //    bucket exists, so this needs an authenticated HeadBucket.
+  const s3 = new S3Client({
+    endpoint: cfg.endpoint,
+    region: cfg.region,
+    forcePathStyle: cfg.forcePathStyle,
+    credentials: {
+      accessKeyId: cfg.accessKeyId,
+      secretAccessKey: cfg.secretAccessKey,
+    },
+  });
+  try {
+    await s3.send(new HeadBucketCommand({ Bucket: cfg.bucket }));
+  } catch (err) {
+    const status = (err as { $metadata?: { httpStatusCode?: number } })
+      .$metadata?.httpStatusCode;
+    if (status === 404) {
+      throw new Error(`bucket "${cfg.bucket}" not found`);
+    }
+    throw err;
+  } finally {
+    s3.destroy();
+  }
+
+  return `health/live HTTP ${res.status}; bucket "${cfg.bucket}" exists`;
 }
 
 async function checkMailpit(host: string, port: number): Promise<string> {
@@ -112,7 +148,18 @@ async function run(): Promise<void> {
   const checks: { name: string; run: () => Promise<string> }[] = [
     { name: 'postgres', run: () => checkPostgres(env.DATABASE_URL) },
     { name: 'redis (valkey)', run: () => checkRedis(env.REDIS_URL) },
-    { name: 'minio', run: () => checkMinio(env.S3_ENDPOINT) },
+    {
+      name: 'minio',
+      run: () =>
+        checkMinio({
+          endpoint: env.S3_ENDPOINT,
+          region: env.S3_REGION,
+          forcePathStyle: env.S3_FORCE_PATH_STYLE,
+          accessKeyId: env.S3_ACCESS_KEY,
+          secretAccessKey: env.S3_SECRET_KEY,
+          bucket: env.S3_BUCKET,
+        }),
+    },
     { name: 'mailpit', run: () => checkMailpit(smtpHost, smtpPort) },
   ];
 

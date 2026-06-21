@@ -70,8 +70,9 @@
     `.env.example` — strict on core/crypto vars, optional passthrough for
     integration/Shopify/AI keys — with a secret-safe, aggregated failure message.
   - `tooling/smoke.ts` + `pnpm smoke`: connects to PG (`SELECT 1` + TimescaleDB
-    extension availability), Redis/Valkey (PING), MinIO (`/health/live`), and Mailpit
-    (SMTP `220`); redacted output; non-zero exit on any failure.
+    extension availability), Redis/Valkey (PING), MinIO (`/health/live` **plus an
+    authenticated HeadBucket asserting the `profitily-reports` bucket exists**), and
+    Mailpit (SMTP `220`); redacted output; non-zero exit on any failure.
   - Root scripts `infra:up` / `infra:up:ai` / `infra:down` / `smoke`; `tooling/README.md`.
 - **Security controls applied (`docs/13 §5,§11`):** secrets only via `.env`
   (git-ignored); compose creds are explicit **local-only dev defaults**; env loader

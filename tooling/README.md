@@ -35,7 +35,7 @@ secrets live in `.env` (git-ignored) and the per-environment secret store.
 | `pnpm infra:up` | Start the four core services (postgres, valkey, minio, mailpit) and wait for healthy |
 | `pnpm infra:up:ai` | Same as above **plus** Ollama (`--profile ai`) |
 | `pnpm infra:down` | Stop and remove the containers (named volumes persist) |
-| `pnpm smoke` | Connect to PG/Redis/MinIO/Mailpit and report health; exits non-zero on failure |
+| `pnpm smoke` | Connect to PG/Redis/MinIO/Mailpit and report health (the MinIO check also asserts the `profitily-reports` bucket exists); exits non-zero on failure |
 
 ### Ollama (AI) is opt-in
 
