@@ -88,6 +88,38 @@ Railway auto-deploys `develop` to **staging**. Releases promote `develop → mai
 fast-forward) → Railway auto-deploys **production**. This is the "merge to develop =
 auto-deploy" pipeline.
 
+### Branch protection (GitHub) — required for "Wait for CI"
+
+The CI workflow (`.github/workflows/ci.yml`, TASK-006) runs on PRs into **and** pushes
+to **both `develop` and `main`** (so the `develop→main` release PR is gated and Railway's
+`main`→production "Wait for CI" has checks to wait on). Branch protection is a **GitHub
+repo setting** (not enforceable from the workflow); a maintainer applies it to **`develop`
+and `main`**:
+
+- **Require a pull request before merging** (no direct pushes).
+- **Require status checks to pass** — required checks: **`verify`** and **`security`**
+  (the two CI jobs); enable **"Require branches to be up to date"** (strict).
+- Recommended: require ≥1 approving review; include administrators.
+
+Optional `gh` snippet (run per branch; illustrative — adjust reviews/admins to taste):
+
+```bash
+for BRANCH in develop main; do
+  gh api -X PUT "repos/{owner}/{repo}/branches/$BRANCH/protection" \
+    --input - <<'JSON'
+{
+  "required_status_checks": { "strict": true, "contexts": ["verify", "security"] },
+  "enforce_admins": true,
+  "required_pull_request_reviews": { "required_approving_review_count": 1 },
+  "restrictions": null
+}
+JSON
+done
+```
+
+Without these checks marked **required**, Railway's "Wait for CI" cannot reliably gate a
+deploy (a deploy could proceed on an unchecked commit).
+
 ### One-time wiring (per environment, per service)
 1. **Connect the repo:** install the **Railway GitHub App** on the repo (needs a
    project member with contributor access).

@@ -1,0 +1,21 @@
+title = "Profitily — Gitleaks config"
+
+# Run the full default ruleset, then allowlist only specific, intentionally
+# committed NON-SECRET placeholders (docs/13 §5). We deliberately do NOT allowlist
+# whole files/paths, so a REAL secret pasted anywhere (incl. .env.example) still
+# trips the scan.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Local-only dev placeholders intentionally committed — never real credentials."
+# Matched against the detected secret value; a finding is ignored only if it
+# CONTAINS one of these stopwords (case-insensitive). Each is a known placeholder:
+stopwords = [
+  "change-me",            # .env.example JWT_SECRET / ENCRYPTION_KEY dev placeholders
+  "minioadmin",           # MinIO local default user/pass (docker-compose + .env.example)
+  "profitily:profitily",  # local Postgres dev creds inside DATABASE_URL (docker-compose)
+  "placeholder",          # seed Store.accessToken + test placeholder tokens
+  "test-encryption-key",  # apps/api vitest.setup dummy ENCRYPTION_KEY
+  "test-jwt-secret",      # apps/api vitest.setup dummy JWT_SECRET
+]

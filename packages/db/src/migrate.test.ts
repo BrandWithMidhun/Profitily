@@ -17,6 +17,8 @@ import { PrismaClient } from '@prisma/client';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { probeDb, requireDbOrThrow } from './test-support/db-gate.js';
+
 const { Client } = pg;
 
 const baseUrl = process.env.DATABASE_URL;
@@ -29,17 +31,6 @@ function withDatabase(connectionString: string, dbName: string): string {
   const url = new URL(connectionString);
   url.pathname = `/${dbName}`;
   return url.toString();
-}
-
-async function isReachable(connectionString: string): Promise<boolean> {
-  const client = new Client({ connectionString, connectionTimeoutMillis: 2000 });
-  try {
-    await client.connect();
-    await client.end();
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function migrateDeploy(databaseUrl: string): void {
@@ -62,15 +53,16 @@ async function migrationCount(databaseUrl: string): Promise<number> {
   }
 }
 
-// Decide up front whether we can run for real (top-level await, ESM).
-const reachable = baseUrl ? await isReachable(baseUrl) : false;
-if (!reachable) {
+// Probe up front (never throws). In CI/REQUIRE_DB the suite still runs and fails
+// loudly via requireDbOrThrow in beforeAll; locally with no DB it skips cleanly.
+const gate = await probeDb();
+if (gate.skip) {
   console.warn(
-    '[migrate.test] DATABASE_URL unreachable or unset — skipping migration tests. Run `pnpm infra:up` to execute them for real.',
+    '[migrate.test] DATABASE_URL unreachable or unset — skipping migration tests. Run `pnpm infra:up` (CI sets REQUIRE_DB and fails instead).',
   );
 }
 
-describe.skipIf(!reachable)('database migrations', () => {
+describe.skipIf(gate.skip)('database migrations', () => {
   // Assigned in beforeAll (not at collection time) so an unset DATABASE_URL
   // skips cleanly instead of throwing in `new URL(undefined)`.
   let adminUrl: string;
@@ -78,6 +70,7 @@ describe.skipIf(!reachable)('database migrations', () => {
   let testUrl: string;
 
   beforeAll(async () => {
+    requireDbOrThrow(gate);
     dbName = `profitily_migtest_${randomBytes(6).toString('hex')}`;
     adminUrl = withDatabase(baseUrl!, 'postgres');
     testUrl = withDatabase(baseUrl!, dbName);

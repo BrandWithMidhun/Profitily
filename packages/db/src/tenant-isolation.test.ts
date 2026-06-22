@@ -18,6 +18,7 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createTenantClient, runWithStore, TenantIsolationError } from './index.js';
+import { probeDb, requireDbOrThrow } from './test-support/db-gate.js';
 
 const { Client } = pg;
 
@@ -32,25 +33,16 @@ function withDatabase(connectionString: string, dbName: string): string {
   return url.toString();
 }
 
-async function isReachable(connectionString: string): Promise<boolean> {
-  const client = new Client({ connectionString, connectionTimeoutMillis: 2000 });
-  try {
-    await client.connect();
-    await client.end();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-const reachable = baseUrl ? await isReachable(baseUrl) : false;
-if (!reachable) {
+// Probe up front (never throws). In CI/REQUIRE_DB the sev-1 suite still runs and
+// fails loudly via requireDbOrThrow in beforeAll; locally it skips cleanly.
+const gate = await probeDb();
+if (gate.skip) {
   console.warn(
-    '[tenant-isolation.test] DATABASE_URL unreachable or unset — skipping. Run `pnpm infra:up` to execute the sev-1 suite for real.',
+    '[tenant-isolation.test] DATABASE_URL unreachable or unset — skipping. Run `pnpm infra:up` (CI sets REQUIRE_DB and fails instead).',
   );
 }
 
-describe.skipIf(!reachable)('tenant isolation (sev-1)', () => {
+describe.skipIf(gate.skip)('tenant isolation (sev-1)', () => {
   // Assigned in beforeAll (not at collection time) so an unset DATABASE_URL
   // skips cleanly instead of throwing in `new URL(undefined)`.
   let adminUrl: string;
@@ -80,6 +72,7 @@ describe.skipIf(!reachable)('tenant isolation (sev-1)', () => {
     runWithStore(storeA, async () => await fn());
 
   beforeAll(async () => {
+    requireDbOrThrow(gate);
     dbName = `profitily_isotest_${randomBytes(6).toString('hex')}`;
     adminUrl = withDatabase(baseUrl!, 'postgres');
     testUrl = withDatabase(baseUrl!, dbName);
