@@ -1,0 +1,129 @@
+name: CI
+
+# Gates every PR into (and push to) develop AND main. main is required because the
+# develop->main release PR must be gated and Railway's main->production "Wait for CI"
+# waits for these checks on main's commit (docs/12 §7).
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+# Least privilege: jobs only read the repo.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    # Real Timescale Postgres so the DB-gated suites RUN (not skip). GitHub waits
+    # for the health check to pass before any step starts.
+    services:
+      postgres:
+        image: timescale/timescaledb:2.17.2-pg16
+        env:
+          POSTGRES_USER: profitily
+          POSTGRES_PASSWORD: profitily
+          POSTGRES_DB: profitily
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U profitily -d profitily"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://profitily:profitily@localhost:5432/profitily
+      # Force the DB-gated suites to run and FAIL loudly if the DB is unreachable
+      # (no silent skip in CI). GitHub also sets CI=true.
+      REQUIRE_DB: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Cache turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test (DB-gated suites force-run; fail if DB unreachable)
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  security:
+    name: security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so Gitleaks can scan all commits.
+          fetch-depth: 0
+
+      - name: Gitleaks (secret scan)
+        run: |
+          set -euo pipefail
+          VERSION=8.30.1
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" -o gitleaks.tgz
+          tar -xzf gitleaks.tgz gitleaks
+          ./gitleaks git . --config .gitleaks.toml --redact --no-banner --exit-code 1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Dependency audit (pnpm)
+        run: pnpm audit --audit-level=high
+
+      - name: OSV-Scanner (dependency vulnerabilities)
+        uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
+        with:
+          scan-args: |-
+            --lockfile=./pnpm-lock.yaml
+
+      - name: Semgrep (SAST)
+        run: |
+          set -euo pipefail
+          python3 -m pip install --user --quiet semgrep==1.167.0
+          export PATH="$HOME/.local/bin:$PATH"
+          semgrep scan \
+            --config p/typescript \
+            --config p/security-audit \
+            --config p/secrets \
+            --severity ERROR \
+            --error \
+            --quiet

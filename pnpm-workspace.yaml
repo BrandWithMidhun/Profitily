@@ -2,6 +2,17 @@ packages:
   - "apps/*"
   - "packages/*"
 
+# Security overrides — force patched transitive versions (CI `pnpm audit` gate).
+# multer: @nestjs/platform-express@11 pins 2.1.1, vulnerable to a DoS
+# (GHSA-72gw-mp4g-v24j, HIGH). 2.2.0 is the same-major security patch; no
+# file-upload code uses multer yet, so the bump is low-risk. Revisit when NestJS
+# bumps its own pin.
+overrides:
+  multer: 2.2.0
+  # esbuild <0.28.1: low, dev-only serve-mode CORS issue (GHSA-g7r4-m6w7-qqqr).
+  # Dedupe the transitive 0.27.7 up to the patched line (we never use esbuild serve).
+  esbuild: "^0.28.1"
+
 # Allowlist for dependency build (postinstall) scripts — kept minimal and explicit.
 # esbuild/@swc/core fetch platform-native binaries (Vitest / NestJS transpile);
 # the Prisma packages download/build their query engine and generate the client;

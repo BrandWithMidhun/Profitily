@@ -14,7 +14,7 @@
 
 | Phase | Theme | Tasks done / total |
 |---|---|---|
-| Phase 0 | Foundation | 3 / 10 |
+| Phase 0 | Foundation | 4 / 10 |
 | Phase 1 | Shopify App, Auth & Billing | 0 / 5 |
 | Phase 2 | Data Ingestion | 0 / 4 |
 | Phase 3 | Cost Management & Shipping Engine | 0 / 4 |
@@ -24,9 +24,9 @@
 | Phase 7 | AI Layer | 0 / 5 |
 | Phase 8 | Hardening & Launch | 0 / 6 |
 
-> TASK-001–003 are merged. TASK-004 is in `REVIEW` (PR open into `develop`); it flips to
-> **done** here once merged. (Phase 0 now also tracks TASK-004b — api production build —
-> and TASK-009 — tenant-guard raw/nested-write hardening.)
+> TASK-001–004 are merged. TASK-006 is in `REVIEW` (PR open into `develop`); it flips to
+> **done** here once merged. (Phase 0 also tracks TASK-004b — api production build — and
+> TASK-009 — tenant-guard raw/nested-write hardening.)
 
 ---
 
@@ -130,7 +130,7 @@
   Prisma guard → TASK-004; token encryption util → TASK-010.
 
 ### TASK-004 — apps/api NestJS skeleton + tenant-isolation guard (sev-1)
-- **Date:** 2026-06-22
+- **Date:** 2026-06-22 · **Merged:** 2026-06-22 (PR #5)
 - **Branch:** `task/TASK-004-api-skeleton-tenant-guard` → `develop`
 - **What shipped:**
   - **Tenant-isolation guard** in `@profitily/db`: a request-scoped `storeId`
@@ -168,11 +168,50 @@
   must verify the **built** api boots and serves `/health`. **TASK-009** hardens the guard
   for raw queries / nested writes. CI must force-run the DB-gated suites (**TASK-006**).
 
+### TASK-006 — GitHub Actions CI (PR gate) + force-run DB suites + security scans
+- **Date:** 2026-06-22
+- **Branch:** `task/TASK-006-ci-pipeline` → `develop`
+- **What shipped:**
+  - `.github/workflows/ci.yml` with two jobs, triggered on **PRs into AND pushes to both
+    `develop` and `main`** (so the release PR is gated and Railway's `main`→production
+    "Wait for CI" has checks):
+    - **`verify`** — `timescale/timescaledb:2.17.2-pg16` service + `REQUIRE_DB=1`;
+      `pnpm install --frozen-lockfile` → `db:generate` → `lint` → `typecheck` → `test`
+      → `build`. The migration + tenant-isolation suites **execute against the service**.
+    - **`security`** — **Gitleaks** (pinned v8.30.1 binary, `gitleaks git`), **`pnpm audit
+      --audit-level=high`**, **OSV-Scanner** (pinned action v2.3.8), **Semgrep** (pinned
+      1.167.0, token-free `p/typescript,p/security-audit,p/secrets`, `--severity ERROR
+      --error`).
+  - Shared **`db-gate`** (`packages/db/src/test-support/db-gate.ts`): locally with no DB →
+    clean **SKIP**; in CI (`CI=true`) or `REQUIRE_DB=1` with DB unreachable → the suite
+    **FAILS loudly** via `requireDbOrThrow` in `beforeAll` (no collection-time crash, no
+    silent skip). `migrate.test.ts` + `tenant-isolation.test.ts` refactored onto it.
+  - `.gitleaks.toml` — minimal **pattern/value** allowlist (stopwords: `change-me`,
+    `minioadmin`, `profitily:profitily`, `placeholder`, `test-encryption-key`,
+    `test-jwt-secret`), each commented; **no whole-file/path allows**, so a real secret
+    still trips (incl. in `.env.example`).
+- **Force-run mechanism (no silent skip):** verified locally — `REQUIRE_DB=1` + DB up →
+  **16 isolation + 2 migration RUN and pass**; `REQUIRE_DB=1` + DB down → suite **FAILS**
+  with the `[db-gate]` error (exit 1). CI sets `REQUIRE_DB=1` and runs the Timescale
+  service, so the suites always run there.
+- **Security controls applied (`docs/13 §14`):** secret/dep/SAST scanning on every PR;
+  no secrets in the workflow; least-privilege `permissions: contents: read`; pinned
+  tool versions; allowlist reviewed to not mask real leaks. **First-run advisory
+  handled by FIXING, not weakening:** `pnpm audit` flagged **multer <2.2.0 (HIGH,
+  GHSA-72gw-mp4g-v24j)** via `@nestjs/platform-express@11` — resolved with a pnpm
+  `overrides: { multer: 2.2.0 }` (same-major security patch; Nest still boots). Gitleaks
+  probe verified (planted secret → `leaks found: 1`; then removed).
+- **Branch protection** documented in `docs/12 §7` (required checks `verify` + `security`;
+  require PR; for `develop` **and** `main`) with an optional `gh api` snippet.
+- **Follow-ups:** branch protection is a repo setting a maintainer applies; nightly/load/
+  mutation/DAST/CodeQL + Testcontainers harness → TASK-007/080+; revisit the multer
+  override when NestJS bumps its own pin.
+
 ---
 
 ## Module completion matrix
 
 | Module | Status | Tasks | Key tables | Security verified | Tests |
 |---|---|---|---|---|---|
-| M00 Platform / Shared | in progress | TASK-001 (done), 002 (done), 004 (REVIEW; api skeleton/config/logging/error/OTel), 004b, 005–009 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images; Pino redaction (no PII/bodies); generic error bodies; helmet | sanity + env-loader (15 Vitest) green; smoke green; /health 200 + error-filter (apps/api); static gates green |
-| M01 Identity & Tenancy | in progress | TASK-003 (done), 004 (REVIEW; tenant guard) | Store, User, Membership, Subscription | **fail-closed tenant isolation** (Prisma extension + ALS context); read + write-path scoping; placeholder token (no real secret); no PII; store-scoped cascades; documented guard bypass boundaries (raw SQL / nested writes → TASK-009) | migration tests (clean + on-existing) + **tenant-isolation suite (16 cases incl. write-path)** green w/ infra up; SKIPPED w/o DB |
+| M00 Platform / Shared | in progress | TASK-001 (done), 002 (done), 004 (done; api skeleton/config/logging/error/OTel), 006 (REVIEW; CI gate + security scans), 004b, 005, 007–009 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images; Pino redaction (no PII/bodies); generic error bodies; helmet; **CI: Gitleaks + pnpm audit (high) + OSV + Semgrep; multer DoS patched via override** | sanity + env-loader (15 Vitest) green; smoke green; /health 200 + error-filter (apps/api); **DB suites force-run in CI**; static gates green |
+| M01 Identity & Tenancy | in progress | TASK-003 (done), 004 (done; tenant guard) | Store, User, Membership, Subscription | **fail-closed tenant isolation** (Prisma extension + ALS context); read + write-path scoping; placeholder token (no real secret); no PII; store-scoped cascades; documented guard bypass boundaries (raw SQL / nested writes → TASK-009) | migration tests (clean + on-existing) + **tenant-isolation suite (16 cases incl. write-path)** green; **force-run in CI** (no silent skip); SKIPPED locally w/o DB |
