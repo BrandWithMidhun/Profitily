@@ -34,3 +34,8 @@ allowBuilds:
   prisma: true
   protobufjs: true
   sharp: true
+  # ssh2 + cpu-features are optional native crypto/SSH accelerators pulled by
+  # testcontainers' dockerode. We connect to Docker over the local socket/npipe (not
+  # SSH), and ssh2 has a pure-JS fallback — so these native builds are NOT needed.
+  cpu-features: false
+  ssh2: false
