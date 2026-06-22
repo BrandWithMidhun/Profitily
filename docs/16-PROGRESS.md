@@ -14,7 +14,7 @@
 
 | Phase | Theme | Tasks done / total |
 |---|---|---|
-| Phase 0 | Foundation | 2 / 8 |
+| Phase 0 | Foundation | 3 / 10 |
 | Phase 1 | Shopify App, Auth & Billing | 0 / 5 |
 | Phase 2 | Data Ingestion | 0 / 4 |
 | Phase 3 | Cost Management & Shipping Engine | 0 / 4 |
@@ -24,8 +24,9 @@
 | Phase 7 | AI Layer | 0 / 5 |
 | Phase 8 | Hardening & Launch | 0 / 6 |
 
-> TASK-001 and TASK-002 are merged. TASK-003 is in `REVIEW` (PR open into `develop`);
-> it flips to **done** here once merged.
+> TASK-001–003 are merged. TASK-004 is in `REVIEW` (PR open into `develop`); it flips to
+> **done** here once merged. (Phase 0 now also tracks TASK-004b — api production build —
+> and TASK-009 — tenant-guard raw/nested-write hardening.)
 
 ---
 
@@ -128,11 +129,50 @@
   not mask a CI regression). Hypertables/continuous aggregates → TASK-054; tenant-scoping
   Prisma guard → TASK-004; token encryption util → TASK-010.
 
+### TASK-004 — apps/api NestJS skeleton + tenant-isolation guard (sev-1)
+- **Date:** 2026-06-22
+- **Branch:** `task/TASK-004-api-skeleton-tenant-guard` → `develop`
+- **What shipped:**
+  - **Tenant-isolation guard** in `@profitily/db`: a request-scoped `storeId`
+    (`AsyncLocalStorage`; `runWithStore`/`getStoreId`) + a DMMF-driven Prisma client
+    extension. Models with a `storeId` field are auto-scoped; with no context they
+    **throw** (`TenantIsolationError`, fail closed). `Store`/`User` pass through.
+    `createTenantClient()` returns a guarded client.
+  - **apps/api** NestJS 11 skeleton (ESM, SWC transpile): `ConfigModule` over
+    `@profitily/shared` `loadEnv`; `PrismaModule`/`PrismaService` (guarded client, lazy
+    connect so boot is DB-free); `GET /health` → 200; `nestjs-pino` logging with
+    redaction (auth/cookies) and no bodies; global `AllExceptionsFilter` (generic out /
+    detail in logs); minimal OTel init (no-op without an OTLP endpoint); `helmet`;
+    `tenantContextMiddleware` **stub** that sets NO storeId yet (queries fail closed
+    until auth).
+- **Guard design & documented bypass boundaries (sev-1):** scoping covers top-level
+  ops — reads merge a `storeId` filter into `where` (so even `findUnique({where:{id}})`
+  is scoped, since Prisma's WhereUniqueInput tolerates an extra filter), and
+  create/createMany/upsert.create force `data.storeId`. **NOT auto-scoped:**
+  `$queryRaw`/`$executeRaw` (raw SQL bypasses the guard); nested writes into tenant
+  models; `upsert` `where` scoping relies on the unique selector tolerating an extra
+  `storeId`. Documented in `extension.ts`, `docs/13 §2`, and here. Hardening = **TASK-009**.
+- **Security controls applied (`docs/13 §2,§4,§9,§12`):** fail-closed tenant isolation;
+  `/health` the only public route; default-deny posture (middleware sets no storeId);
+  Pino redaction + no PII/secrets/bodies; generic error bodies outward; `helmet`. Rate
+  limiting + CORS allowlist deferred (need auth/real domains).
+- **Test cases covered:** standing **tenant-isolation suite (16 cases, sev-1)** —
+  (a) read scoping incl. cross-tenant `findUnique(B.id)→null`; (b) fail-closed
+  (findMany/findUnique/create throw with no context); (c) **write-path** scoping
+  (updateMany/deleteMany/create/createMany/upsert under A never touch or create into B,
+  proven with a user shared across A & B); (d) Store/User not force-scoped. Plus apps/api
+  `/health` 200 (in-process supertest) + error-filter unit tests (3). Reachability-gated:
+  run for real with `pnpm infra:up` (all green); **SKIPPED** (visible) when DB down. All
+  gates green (lint 4/4, typecheck 5/5, test 37, build).
+- **Follow-ups:** **TASK-004b** owns the api production build (dist/bundle + start) and
+  must verify the **built** api boots and serves `/health`. **TASK-009** hardens the guard
+  for raw queries / nested writes. CI must force-run the DB-gated suites (**TASK-006**).
+
 ---
 
 ## Module completion matrix
 
 | Module | Status | Tasks | Key tables | Security verified | Tests |
 |---|---|---|---|---|---|
-| M00 Platform / Shared | in progress | TASK-001 (done), 002 (done), 004–008 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images | sanity + env-loader (15 Vitest) green; smoke green; static gates green |
-| M01 Identity & Tenancy | in progress | TASK-003 (REVIEW) | Store, User, Membership, Subscription | placeholder token (no real secret); no PII; store-scoped cascades; tenant-scoping guard pending (TASK-004) | migration tests (clean + on-existing) green w/ infra up; SKIPPED w/o DB |
+| M00 Platform / Shared | in progress | TASK-001 (done), 002 (done), 004 (REVIEW; api skeleton/config/logging/error/OTel), 004b, 005–009 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images; Pino redaction (no PII/bodies); generic error bodies; helmet | sanity + env-loader (15 Vitest) green; smoke green; /health 200 + error-filter (apps/api); static gates green |
+| M01 Identity & Tenancy | in progress | TASK-003 (done), 004 (REVIEW; tenant guard) | Store, User, Membership, Subscription | **fail-closed tenant isolation** (Prisma extension + ALS context); read + write-path scoping; placeholder token (no real secret); no PII; store-scoped cascades; documented guard bypass boundaries (raw SQL / nested writes → TASK-009) | migration tests (clean + on-existing) + **tenant-isolation suite (16 cases incl. write-path)** green w/ infra up; SKIPPED w/o DB |

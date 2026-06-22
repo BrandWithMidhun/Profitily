@@ -3,10 +3,13 @@ packages:
   - "packages/*"
 
 # Allowlist for dependency build (postinstall) scripts — kept minimal and explicit.
-# esbuild fetches its platform-native binary (required by Vitest); the Prisma
-# packages download/build their query engine and generate the client.
+# esbuild/@swc/core fetch platform-native binaries (Vitest / NestJS transpile);
+# the Prisma packages download/build their query engine and generate the client;
+# protobufjs is an OpenTelemetry transitive dependency.
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
+  '@swc/core': true
   esbuild: true
   prisma: true
+  protobufjs: true
