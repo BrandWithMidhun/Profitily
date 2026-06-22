@@ -51,6 +51,14 @@ config**:
   full control over the pnpm workspace build. Worker reuses the `api` build with a
   different start command (`pnpm --filter @profitily/api start:worker`).
 
+> **We use a per-app Dockerfile for `api`** (`apps/api/Dockerfile`), not Nixpacks.
+> Nixpacks installs **corepack@0.24.1**, which can't run our pinned **pnpm@11.1.2** on
+> **Node 24** (`ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`), and it injected service
+> secrets as build `ARG`/`ENV` (`SecretsUsedInArgOrEnv`). The Dockerfile pins pnpm via
+> `npm i -g pnpm@11.1.2` (not corepack), references **no secrets at build time** (they
+> arrive at runtime from Railway), and installs **OpenSSL** (the Prisma engine needs
+> libssl; the slim image omits it).
+
 ## 4. Migrations
 Set a **pre-deploy command** on `api` to run migrations before each release:
 ```
@@ -195,14 +203,15 @@ First real deploy: the **`api` service + a TimescaleDB database** in the `stagin
 environment (auto-deploys from `develop`, CI-gated). **No Redis/MinIO** (nothing uses
 them yet); web/shopify-app join at TASK-005.
 
-**Committed config — `apps/api/railway.json`** (Nixpacks; precompiled `dist`):
+**Committed config — `apps/api/railway.json`** (**Dockerfile** builder; see §3 for why
+not Nixpacks):
 
 ```json
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "pnpm install --frozen-lockfile && pnpm build",
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "apps/api/Dockerfile",
     "watchPatterns": ["apps/api/**", "packages/**"]
   },
   "deploy": {
@@ -214,12 +223,21 @@ them yet); web/shopify-app join at TASK-005.
 }
 ```
 
-**Build/prune ordering (important):** `buildCommand` installs **all** deps (incl. dev) and
-runs `pnpm build` (SWC for `apps/api`, `tsc` for the libs → `dist`). `@swc/cli` +
-`typescript` are **build-time only**. **`prisma` is a runtime dependency of
-`@profitily/db`**, so the `preDeployCommand` migrate (and any prod devDep prune) is safe.
-`/health` is **liveness only** — it does not touch the DB (Prisma connects lazily), so the
-service boots and stays healthy even before the DB is reachable.
+> If Railway does not honor `build.dockerfilePath` from `railway.json` for a non-root
+> Dockerfile, set the service variable **`RAILWAY_DOCKERFILE_PATH=apps/api/Dockerfile`**
+> instead (Service → Variables). Build context is the repo root.
+
+**`apps/api/Dockerfile`** (single-stage, Debian/glibc): installs OpenSSL (Prisma engine),
+`npm i -g pnpm@11.1.2`, copies the workspace (`.dockerignore` keeps `node_modules`/`dist`/
+`.env` out), `pnpm install --frozen-lockfile`, `pnpm build` (turbo: `db:generate` → libs
+`tsc` + api SWC → `dist`), then `CMD node apps/api/dist/main.js`. **No secrets are
+referenced at build time** — they arrive at runtime from Railway. The image keeps
+**pnpm + node_modules + prisma**, so the pre-deploy `migrate:deploy` and the start command
+both run (multi-stage slimming is a follow-up). `@swc/cli`/`typescript` are build-time
+only; **`prisma` is a runtime dependency of `@profitily/db`** so the migrate survives.
+`/health` is **liveness only** — it never touches the DB (Prisma connects lazily), so the
+service boots and stays healthy even before the DB is reachable (proven by booting the
+image with the DB down → `/health` 200).
 
 **Env vars on the `api` service** — set in Railway only; keys mirror `.env.example`:
 

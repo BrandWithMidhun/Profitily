@@ -236,12 +236,24 @@
   only api public; no Redis/MinIO added.
 - **Gates:** lint 4/4, typecheck 7/7, test 7/7 (shared 14 + api 4; db suites run in CI
   against the Timescale service), build 4/4 (api SWC 12 files; libs `dist`).
+- **Builder switched to a per-app Dockerfile (fix):** the first Railway deploy failed at
+  install — Nixpacks' **corepack@0.24.1** can't run **pnpm@11.1.2** on **Node 24**
+  (`ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`), and it injected service secrets as build
+  `ARG`/`ENV`. Replaced with **`apps/api/Dockerfile`** (Debian/glibc; `npm i -g
+  pnpm@11.1.2` not corepack; installs OpenSSL for the Prisma engine; **no build-time
+  secrets**; keeps pnpm+node_modules+prisma for the pre-deploy migrate). `railway.json`
+  → `builder: DOCKERFILE` (`dockerfilePath: apps/api/Dockerfile`; `RAILWAY_DOCKERFILE_PATH`
+  fallback documented) + `.dockerignore` (no `node_modules`/`dist`/`.env`). **Proven
+  locally:** `docker build -f apps/api/Dockerfile -t profitily-api .` → run with DB **down**
+  → `GET /health` → **200 `{"status":"ok"}`**; image has pnpm 11.1.2 + prisma 6.19.3
+  (`debian-openssl-3.0.x` engine); `.env` absent from the image.
 - **MANUAL / pending (mine):** Railway dashboard wiring + final staging `/health` 200 —
   enumerated as the B) checklist in the Build Summary (user generates secrets; 1 GB
-  Timescale volume; env list with real-vs-placeholder marked).
+  Timescale volume; env list with real-vs-placeholder marked; **Dockerfile builder**).
 - **Follow-ups:** make not-yet-used subsystem env (S3/SMTP/Ollama) optional-until-used so
   staging needs only real core secrets; add a `development` export condition only if
-  build-first proves a recurring footgun.
+  build-first proves a recurring footgun; **multi-stage Dockerfile slimming** (drop dev
+  deps/source from the final image once a separate migrate step or pruned runtime exists).
 
 ---
 
