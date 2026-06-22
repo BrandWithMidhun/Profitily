@@ -24,10 +24,9 @@
 | Phase 7 | AI Layer | 0 / 5 |
 | Phase 8 | Hardening & Launch | 0 / 6 |
 
-> TASK-001–004 + TASK-006 are merged. TASK-004b is in `REVIEW` (PR open into `develop`);
-> the committable build is done, **the Railway dashboard wiring + final staging `/health`
-> check are manual (pending)**. (Phase 0 also tracks TASK-009 — tenant-guard
-> raw/nested-write hardening.)
+> TASK-001–004 + TASK-006 are merged. TASK-004b (Railway dashboard wiring + staging
+> `/health` manual/pending) and TASK-005 (frontend skeletons) are in `REVIEW` (PRs open
+> into `develop`). (Phase 0 also tracks TASK-009 — tenant-guard raw/nested-write hardening.)
 
 ---
 
@@ -255,11 +254,48 @@
   build-first proves a recurring footgun; **multi-stage Dockerfile slimming** (drop dev
   deps/source from the final image once a separate migrate step or pruned runtime exists).
 
+### TASK-005 — apps/web + apps/shopify-app skeletons
+- **Date:** 2026-06-22 · **Branch:** `task/TASK-005-frontend-skeletons` → `develop`
+- **What shipped:**
+  - **`apps/web`** — Next 15 App Router + TS + **Tailwind v4** (`@tailwindcss/postcss`);
+    minimal root layout (header showing the stub user) + home route. No Polaris.
+  - **`apps/shopify-app`** — Next 15 App Router + TS + **Polaris 13**; root layout imports
+    Polaris CSS and a `'use client'` `Providers` wraps children in `AppProvider` + en
+    i18n; S2 app-home as a static Polaris `Page`/`Card` (plan badge + sync placeholder +
+    "Open Profitily Portal" CTA). No App Bridge. No Tailwind/shadcn.
+  - Per-app **auth stub** `src/lib/session.ts` (`getStubSession()`), greppable marker
+    `// STUB(TASK-010/011): replace with real Shopify OAuth/JWT session`.
+  - Turbo wiring (dev/build/start/lint/typecheck per app; `build.outputs` += `.next/**`,
+    `−.next/cache`); minimal root **Playwright** config (2 webServers) + one smoke per app;
+    root `pnpm test:e2e`. Committed 2-line `next-env.d.ts` (tsc-safe; `next build`
+    re-adds the typed-routes ref ephemerally).
+  - **ADR 0003** (React 18.3 + Next 15 + Polaris ^13.9 baseline; Polaris-React frozen at
+    React 18); ADR index corrected (added the missing **0002 Railway** entry; renumbered
+    placeholders to 0004/0005). README ports note (web 3000 / api 3001 / shopify-app 3002).
+- **React baseline (ADR 0003):** Polaris 13 peers React ^18 (no React 19) → pinned
+  **React 18.3 + Next 15 + Polaris ^13.9 for both apps** (consistency + compatibility),
+  not the latest React 19. `sharp` added to the build-script allowlist (Next image opt).
+- **Security:** no secrets, no `.env` keys added (confirmed `.env.example` unchanged), no
+  DB/API/PII access; auth is an isolated, marked stub.
+- **Test cases covered:** **Playwright smoke ×2** — web `:3000` (home heading + stub user)
+  and shopify-app `:3002` (Polaris app-home heading + CTA): **2 passed**. RTL/axe/visual
+  **deferred to TASK-008** (skeleton has no component logic); full e2e harness + CI browser
+  install **deferred to TASK-007** (smoke stays out of the CI `verify` gate). Gates:
+  lint 6/6, typecheck 9/9, build 6/6 (both Next apps prerender static). `pnpm dev` boots
+  **all three** (web 3000 / api 3001 / shopify-app 3002) — verified, no collision.
+- **Deviations:** (1) tiny `apps/api` `dev` script tweak (`--env-file-if-exists=../../.env`)
+  so `pnpm dev` boots api under turbo's strict env filtering — required for the all-three
+  acceptance. (2) corrected the stale ADR index. No `design/` drop was used (skeletons —
+  built to the §4 S2 / §5 P0 specs).
+- **Follow-ups:** real shell/tokens/components (TASK-008); full e2e/RTL/axe/visual harness
+  + CI e2e (TASK-007); real Shopify auth/App Bridge (TASK-010/011).
+
 ---
 
 ## Module completion matrix
 
 | Module | Status | Tasks | Key tables | Security verified | Tests |
 |---|---|---|---|---|---|
-| M00 Platform / Shared | in progress | TASK-001 (done), 002 (done), 004 (done; api skeleton/config/logging/error/OTel), 006 (done; CI gate + security scans), 004b (REVIEW; api prod build + Railway staging — deploy manual/pending), 005, 007–009 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images; Pino redaction (no PII/bodies); generic error bodies; helmet; **CI: Gitleaks + pnpm audit (high) + OSV + Semgrep; multer DoS patched via override**; Railway secrets user-set (none in repo) | sanity + env-loader (15 Vitest) green; smoke green; /health 200 + error-filter (apps/api); **built api boots DB-free, /health 200**; **DB suites force-run in CI**; static gates green |
+| M00 Platform / Shared | in progress | TASK-001 (done), 002 (done), 004 (done; api skeleton/config/logging/error/OTel), 006 (done; CI gate + security scans), 004b (REVIEW; api prod build + Railway staging — deploy manual/pending), 007–009 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images; Pino redaction (no PII/bodies); generic error bodies; helmet; **CI: Gitleaks + pnpm audit (high) + OSV + Semgrep; multer DoS patched via override**; Railway secrets user-set (none in repo) | sanity + env-loader (15 Vitest) green; smoke green; /health 200 + error-filter (apps/api); **built api boots DB-free, /health 200**; **DB suites force-run in CI**; static gates green |
+| UI surfaces (apps/web, apps/shopify-app) | skeleton | TASK-005 (REVIEW; Next 15 skeletons), 008 (shell/tokens/components), 007 (e2e harness) | — | auth = isolated marked stub (TASK-010/011); no secrets/`.env` keys; no DB/API access; Polaris/Tailwind split structural | Playwright smoke ×2 green (web :3000, shopify-app :3002); RTL/axe/visual → TASK-008 |
 | M01 Identity & Tenancy | in progress | TASK-003 (done), 004 (done; tenant guard) | Store, User, Membership, Subscription | **fail-closed tenant isolation** (Prisma extension + ALS context); read + write-path scoping; placeholder token (no real secret); no PII; store-scoped cascades; documented guard bypass boundaries (raw SQL / nested writes → TASK-009) | migration tests (clean + on-existing) + **tenant-isolation suite (16 cases incl. write-path)** green; **force-run in CI** (no silent skip); SKIPPED locally w/o DB |

@@ -52,7 +52,12 @@ docker compose -f tooling/docker-compose.yml up -d   # PG+Timescale, Redis, MinI
 pnpm db:migrate && pnpm db:seed
 pnpm dev                                              # web + api + shopify-app
 pnpm test                                             # unit + integration
+pnpm test:e2e                                         # Playwright smoke (needs: npx playwright install chromium)
 ```
+
+**Local dev ports:** `apps/web` → **3000**, `apps/api` → **3001**, `apps/shopify-app` →
+**3002**. `pnpm dev` runs all three together (no collision). Run `pnpm build` once after
+install before `pnpm dev` / `pnpm test:e2e` (the workspace libs build to `dist`).
 
 ## Status
 

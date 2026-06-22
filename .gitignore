@@ -34,3 +34,6 @@ Thumbs.db
 # Prisma / local data
 packages/db/prisma/*.db
 tooling/.data/
+
+# TypeScript incremental build cache
+*.tsbuildinfo

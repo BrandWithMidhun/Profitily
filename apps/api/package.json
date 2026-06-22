@@ -6,7 +6,7 @@
   "scripts": {
     "build": "swc src --out-dir dist --strip-leading-paths",
     "start": "node dist/main.js",
-    "dev": "node --import @swc-node/register/esm-register src/main.ts",
+    "dev": "node --env-file-if-exists=../../.env --import @swc-node/register/esm-register src/main.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
