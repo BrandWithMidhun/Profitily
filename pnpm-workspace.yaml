@@ -17,6 +17,9 @@ overrides:
   # chain); the runtime already uses the patched 21.3.4 (via @nestjs/common). Dedupe
   # the build-time copy up to the patched line too.
   file-type: "^21.3.2"
+  # postcss <8.5.10: MEDIUM (GHSA-qx2v-qp2m-jg93). Transitive (Next/Tailwind build
+  # tooling); 8.5.10 is a same-major, API-stable minor. Dedupe to the patched line.
+  postcss: "^8.5.10"
 
 # Allowlist for dependency build (postinstall) scripts — kept minimal and explicit.
 # esbuild/@swc/core fetch platform-native binaries (Vitest / NestJS transpile);
