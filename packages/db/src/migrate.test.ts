@@ -71,11 +71,17 @@ if (!reachable) {
 }
 
 describe.skipIf(!reachable)('database migrations', () => {
-  const adminUrl = withDatabase(baseUrl!, 'postgres');
-  const dbName = `profitily_migtest_${randomBytes(6).toString('hex')}`;
-  const testUrl = withDatabase(baseUrl!, dbName);
+  // Assigned in beforeAll (not at collection time) so an unset DATABASE_URL
+  // skips cleanly instead of throwing in `new URL(undefined)`.
+  let adminUrl: string;
+  let dbName: string;
+  let testUrl: string;
 
   beforeAll(async () => {
+    dbName = `profitily_migtest_${randomBytes(6).toString('hex')}`;
+    adminUrl = withDatabase(baseUrl!, 'postgres');
+    testUrl = withDatabase(baseUrl!, dbName);
+
     const admin = new Client({ connectionString: adminUrl });
     await admin.connect();
     try {

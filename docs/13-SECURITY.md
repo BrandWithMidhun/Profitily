@@ -16,9 +16,13 @@ for speed. If a task can't meet them, **stop and flag** (`docs/14 §4`).
 
 ## 2. Multi-tenant isolation (sev-1)
 The top risk. Every tenant query is scoped by `storeId` through the Prisma tenant
-extension, which **rejects unscoped tenant access**. Cross-tenant data exposure is a
-sev-1 defect that auto-fails review. The standing isolation test suite (`docs/08 §3`)
-must be extended for every new tenant table.
+extension, which **rejects unscoped tenant access** (fail closed). Cross-tenant data
+exposure is a sev-1 defect that auto-fails review. The standing isolation test suite
+(`docs/08 §3`) must be extended for every new tenant table.
+**Guard boundaries:** the extension scopes only top-level Prisma model operations. It
+does **not** scope `$queryRaw`/`$executeRaw` (raw SQL bypasses it — never pass tenant
+data through raw SQL without a manual `storeId` predicate) or nested writes into tenant
+models (use top-level ops or scope explicitly). Hardening for these is TASK-009.
 
 ## 3. Authentication
 - **Sessions:** short-lived JWT access tokens + rotating refresh tokens; verify

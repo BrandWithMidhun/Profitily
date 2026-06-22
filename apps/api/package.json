@@ -1,0 +1,43 @@
+{
+  "name": "@profitily/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "start": "node --import @swc-node/register/esm-register src/main.ts",
+    "dev": "node --import @swc-node/register/esm-register src/main.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.27",
+    "@nestjs/core": "^11.1.27",
+    "@nestjs/platform-express": "^11.1.27",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.219.0",
+    "@opentelemetry/sdk-node": "^0.219.0",
+    "@profitily/db": "workspace:*",
+    "@profitily/shared": "workspace:*",
+    "helmet": "^8.2.0",
+    "nestjs-pino": "^4.6.1",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^11.1.27",
+    "@profitily/config": "workspace:*",
+    "@swc-node/register": "^1.11.1",
+    "@swc/core": "^1.15.41",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "@types/supertest": "^6.0.2",
+    "eslint": "^9.20.0",
+    "supertest": "^7.2.2",
+    "typescript": "^5.8.0",
+    "unplugin-swc": "^1.5.9",
+    "vitest": "^3.0.0"
+  }
+}

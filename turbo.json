@@ -5,15 +5,14 @@
       "cache": false
     },
     "build": {
-      "dependsOn": ["^build", "generate"],
-      "outputs": ["dist/**"]
+      "dependsOn": ["^build", "generate", "^generate"]
     },
     "lint": {},
     "typecheck": {
-      "dependsOn": ["^build", "generate"]
+      "dependsOn": ["^build", "generate", "^generate"]
     },
     "test": {
-      "dependsOn": ["^build", "generate"]
+      "dependsOn": ["^build", "generate", "^generate"]
     },
     "dev": {
       "cache": false,
