@@ -2,7 +2,11 @@ packages:
   - "apps/*"
   - "packages/*"
 
-# Allowlist for dependency build (postinstall) scripts. esbuild fetches its
-# platform-native binary in a postinstall step and is required by Vitest.
+# Allowlist for dependency build (postinstall) scripts — kept minimal and explicit.
+# esbuild fetches its platform-native binary (required by Vitest); the Prisma
+# packages download/build their query engine and generate the client.
 allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
   esbuild: true
+  prisma: true
