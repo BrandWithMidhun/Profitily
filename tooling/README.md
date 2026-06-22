@@ -68,10 +68,29 @@ Available overrides (defaults): `DB_HOST_PORT` (5432), `REDIS_HOST_PORT` (6379),
 `MAILPIT_SMTP_HOST_PORT` (1025), `MAILPIT_UI_HOST_PORT` (8025),
 `OLLAMA_HOST_PORT` (11434).
 
+## Database (Prisma) — migrate, seed, migration tests
+
+```bash
+pnpm db:generate   # generate the Prisma client (also runs automatically before typecheck/test/build)
+pnpm db:migrate    # apply migrations (prisma migrate deploy) — idempotent
+pnpm db:seed       # idempotent demo seed (store + owner + membership + subscription)
+```
+
+The first migration enables the **TimescaleDB extension**
+(`CREATE EXTENSION IF NOT EXISTS timescaledb`); hypertables/continuous aggregates
+arrive later with `ProfitSnapshot` (TASK-054).
+
+**Migration tests** (`packages/db/src/migrate.test.ts`) only run for real when a
+Postgres is reachable — start it with `pnpm infra:up` first, then `pnpm test`. With no
+DB they report as **SKIPPED** (never passed), each in a throwaway
+`profitily_migtest_<rand>` DB that is dropped afterward. ⚠️ **CI (TASK-006) must
+force-run these against a real Postgres and fail if it is unreachable** — locally they
+self-skip, which must not hide a regression in CI.
+
 ## Notes
 
 - `pnpm infra:up` uses `--wait`, so it returns only once healthchecks pass (or fails).
 - TimescaleDB: the image preinstalls the extension; `pnpm smoke` confirms it is
-  **available** (non-destructive). Hypertables/continuous aggregates come in TASK-003.
+  **available** (non-destructive); the first DB migration enables it (TASK-003).
 - Volumes (`pgdata`, `valkeydata`, `miniodata`, `ollamadata`) persist across restarts;
   remove them with `docker compose -f tooling/docker-compose.yml down -v`.

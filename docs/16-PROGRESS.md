@@ -14,7 +14,7 @@
 
 | Phase | Theme | Tasks done / total |
 |---|---|---|
-| Phase 0 | Foundation | 1 / 8 |
+| Phase 0 | Foundation | 2 / 8 |
 | Phase 1 | Shopify App, Auth & Billing | 0 / 5 |
 | Phase 2 | Data Ingestion | 0 / 4 |
 | Phase 3 | Cost Management & Shipping Engine | 0 / 4 |
@@ -24,8 +24,8 @@
 | Phase 7 | AI Layer | 0 / 5 |
 | Phase 8 | Hardening & Launch | 0 / 6 |
 
-> TASK-001 is merged. TASK-002 is in `REVIEW` (PR open into `develop`); it flips to
-> **done** here once merged.
+> TASK-001 and TASK-002 are merged. TASK-003 is in `REVIEW` (PR open into `develop`);
+> it flips to **done** here once merged.
 
 ---
 
@@ -92,10 +92,47 @@
   schema/migrations/hypertables → **TASK-003**; CI wiring of these gates → **TASK-006**;
   Testcontainers integration harness → **TASK-007**.
 
+### TASK-003 — `packages/db` (Prisma): tenancy models, first migration (+ TimescaleDB extension), seed, migration tests
+- **Date:** 2026-06-22
+- **Branch:** `task/TASK-003-db-tenancy` → `develop`
+- **What shipped:**
+  - `packages/db` with Prisma 6.19.3 (co-located `prisma` + `@prisma/client`): schema
+    with the four tenancy models (`Store`, `User`, `Membership`, `Subscription`) and
+    enums `PlanTier`/`SubStatus`/`Role` per `docs/04 §1` — uniques (`shopDomain`,
+    `email`, `(userId,storeId)`, `Subscription.storeId`), `@@index([plan])`,
+    `@@index([storeId])`, and store-scoped cascade FKs.
+  - First migration `20260622021548_init` prepended with
+    `CREATE EXTENSION IF NOT EXISTS timescaledb` (no hypertables yet — TASK-054).
+  - Idempotent demo seed (store + owner + membership + subscription) with a labelled
+    **placeholder** `accessToken` (no real secret; encryption util is TASK-010).
+  - Reachability-gated migration tests (apply-from-clean + apply-on-existing) using
+    throwaway `profitily_migtest_<rand>` DBs dropped in `afterAll` even on failure.
+  - `src/index.ts` re-exports the generated client; root scripts
+    `db:generate`/`db:migrate`(=`migrate deploy`)/`db:seed`; turbo `generate` task that
+    `typecheck`/`test`/`build` depend on; the generated client is **git-ignored**
+    (default output under `node_modules`).
+- **Security controls applied (`docs/13 §5–6`):** no real secrets/PII — seed
+  `accessToken` is a clearly-labelled dev placeholder; no crypto util built (TASK-010);
+  only a `.test` demo email; `DATABASE_URL` stays in git-ignored `.env`; Prisma build
+  scripts added to the `allowBuilds` allowlist **explicitly and minimally**
+  (`@prisma/client`, `@prisma/engines`, `prisma`); frozen lockfile retained.
+- **Test cases covered:** migration **apply-from-clean** (migration recorded; 4 tables
+  present; **timescaledb extension enabled** via `pg_extension`; Prisma data round-trip;
+  store-cascade removes membership + subscription) and **apply-on-existing**
+  (re-running `migrate deploy` is a no-op; `_prisma_migrations` count unchanged; data
+  preserved). Verified live with `pnpm infra:up`: both pass; with DB down they report
+  **SKIPPED** (visible, with reason). `db:migrate` clean+idempotent and `db:seed`
+  idempotent confirmed manually. All static gates green (lint/typecheck/test/build).
+- **Follow-ups:** **TASK-006 (CI) must force-run the migration tests against a real
+  Postgres service and fail if it is unreachable** (locally they self-skip, which must
+  not mask a CI regression). Hypertables/continuous aggregates → TASK-054; tenant-scoping
+  Prisma guard → TASK-004; token encryption util → TASK-010.
+
 ---
 
 ## Module completion matrix
 
 | Module | Status | Tasks | Key tables | Security verified | Tests |
 |---|---|---|---|---|---|
-| M00 Platform / Shared | in progress | TASK-001 (done), 002 (REVIEW), 003–008 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images | sanity + env-loader (15 Vitest) green; smoke green; static gates green |
+| M00 Platform / Shared | in progress | TASK-001 (done), 002 (done), 004–008 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images | sanity + env-loader (15 Vitest) green; smoke green; static gates green |
+| M01 Identity & Tenancy | in progress | TASK-003 (REVIEW) | Store, User, Membership, Subscription | placeholder token (no real secret); no PII; store-scoped cascades; tenant-scoping guard pending (TASK-004) | migration tests (clean + on-existing) green w/ infra up; SKIPPED w/o DB |

@@ -1,0 +1,88 @@
+// Profitily AI — database schema (single source of DB truth).
+// Conventions (docs/04): money is BigInt minor units + currency; every tenant table
+// has storeId and is queried via the tenant extension (added in TASK-004); IDs cuid();
+// timestamps UTC; enums are native Postgres enums.
+//
+// SCOPE (TASK-003): only the tenancy models + their enums. Catalog/orders/costs/etc.
+// and the ProfitSnapshot hypertable arrive in later tasks; relations to those models
+// are added when those models are introduced.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────── Enums ────────────────
+enum PlanTier {
+  FREE
+  GROWTH
+  PRO
+  AGENCY
+}
+
+enum SubStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  VIEWER
+}
+
+// ──────────────── Tenancy ────────────────
+model Store {
+  id            String        @id @default(cuid())
+  shopDomain    String        @unique
+  accessToken   String // encrypted at rest; encryption util lands in TASK-010
+  baseCurrency  String        @default("USD") // set from Shopify shop currency at install (ADR 0001)
+  country       String?
+  plan          PlanTier      @default(FREE)
+  installedAt   DateTime      @default(now())
+  uninstalledAt DateTime?
+  syncCursor    Json?
+  settings      Json?
+  memberships   Membership[]
+  subscription  Subscription?
+
+  @@index([plan])
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String?
+  passwordHash String?
+  authProvider String       @default("shopify")
+  memberships  Membership[]
+  createdAt    DateTime     @default(now())
+}
+
+model Membership {
+  id      String @id @default(cuid())
+  userId  String
+  storeId String
+  role    Role   @default(OWNER)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+  @@index([storeId])
+}
+
+model Subscription {
+  id               String    @id @default(cuid())
+  storeId          String    @unique
+  tier             PlanTier  @default(FREE)
+  status           SubStatus @default(TRIALING)
+  shopifyChargeId  String?
+  currentPeriodEnd DateTime?
+  store            Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
