@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit -p tsconfig.json",
-    "start": "node --import @swc-node/register/esm-register src/main.ts",
+    "build": "swc src --out-dir dist --strip-leading-paths",
+    "start": "node dist/main.js",
     "dev": "node --import @swc-node/register/esm-register src/main.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -30,6 +30,7 @@
     "@nestjs/testing": "^11.1.27",
     "@profitily/config": "workspace:*",
     "@swc-node/register": "^1.11.1",
+    "@swc/cli": "^0.7.0",
     "@swc/core": "^1.15.41",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.0",

@@ -5,7 +5,8 @@
       "cache": false
     },
     "build": {
-      "dependsOn": ["^build", "generate", "^generate"]
+      "dependsOn": ["^build", "generate", "^generate"],
+      "outputs": ["dist/**"]
     },
     "lint": {},
     "typecheck": {

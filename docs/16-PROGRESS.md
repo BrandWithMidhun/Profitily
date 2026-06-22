@@ -14,7 +14,7 @@
 
 | Phase | Theme | Tasks done / total |
 |---|---|---|
-| Phase 0 | Foundation | 4 / 10 |
+| Phase 0 | Foundation | 5 / 10 |
 | Phase 1 | Shopify App, Auth & Billing | 0 / 5 |
 | Phase 2 | Data Ingestion | 0 / 4 |
 | Phase 3 | Cost Management & Shipping Engine | 0 / 4 |
@@ -24,9 +24,10 @@
 | Phase 7 | AI Layer | 0 / 5 |
 | Phase 8 | Hardening & Launch | 0 / 6 |
 
-> TASK-001–004 are merged. TASK-006 is in `REVIEW` (PR open into `develop`); it flips to
-> **done** here once merged. (Phase 0 also tracks TASK-004b — api production build — and
-> TASK-009 — tenant-guard raw/nested-write hardening.)
+> TASK-001–004 + TASK-006 are merged. TASK-004b is in `REVIEW` (PR open into `develop`);
+> the committable build is done, **the Railway dashboard wiring + final staging `/health`
+> check are manual (pending)**. (Phase 0 also tracks TASK-009 — tenant-guard
+> raw/nested-write hardening.)
 
 ---
 
@@ -207,11 +208,46 @@
   mutation/DAST/CodeQL + Testcontainers harness → TASK-007/080+; revisit the multer
   override when NestJS bumps its own pin.
 
+### TASK-004b — apps/api production build + Railway staging deploy (api only)
+- **Date:** 2026-06-22 · **Branch:** `task/TASK-004b-api-prod-build` → `develop`
+- **What shipped (committable):**
+  - **Workspace libs build to runnable JS:** `@profitily/shared` + `@profitily/db` get a
+    `tsc` build (`tsconfig.build.json` → `dist`, ESM + `.d.ts`, tests/test-support
+    excluded) and `exports`→`dist`; db build runs after `generate`.
+  - **apps/api precompiled:** `build` = `swc src --out-dir dist --strip-leading-paths`
+    (ESM + decorator metadata via `.swcrc`); `start` = `node dist/main.js`; `@swc/cli`
+    added; root `start:api`.
+  - **`apps/api/railway.json`** (Nixpacks): `buildCommand` = `pnpm install --frozen-lockfile
+    && pnpm build`; `startCommand` = `node apps/api/dist/main.js`; `preDeployCommand` =
+    `pnpm --filter @profitily/db migrate:deploy`; `healthcheckPath` `/health`; restart
+    ON_FAILURE; watch `apps/api/**` + `packages/**`.
+  - **`prisma` moved to a runtime dependency** of `@profitily/db` (was a devDep) so the
+    pre-deploy migrate survives any prod devDep prune; `@swc/cli`/`typescript` stay
+    build-time only. Build/prune ordering documented in `docs/12 §11`.
+  - **ADR 0002** (Railway accepted paid host, usage-based cost, staging api+Timescale
+    scope, reversibility); `docs/12 §11` (concrete `railway.json` + env table marked
+    REAL-SECRET / REFERENCE / PLACEHOLDER).
+- **DB-independent `/health` (liveness):** PrismaService already lazy-connects (no eager
+  `$connect`), so no code change needed. **Proven:** built artifact booted with
+  `DATABASE_URL` pointed at a dead port (no DB) → `GET /health` → **200 `{"status":"ok"}`**
+  (boot log: "Nest application successfully started"; no DB connection).
+- **Security:** no secrets generated/printed/committed — `JWT_SECRET`/`ENCRYPTION_KEY` are
+  user-set in Railway only; `.env.example` keys stay placeholders; DB private on Railway,
+  only api public; no Redis/MinIO added.
+- **Gates:** lint 4/4, typecheck 7/7, test 7/7 (shared 14 + api 4; db suites run in CI
+  against the Timescale service), build 4/4 (api SWC 12 files; libs `dist`).
+- **MANUAL / pending (mine):** Railway dashboard wiring + final staging `/health` 200 —
+  enumerated as the B) checklist in the Build Summary (user generates secrets; 1 GB
+  Timescale volume; env list with real-vs-placeholder marked).
+- **Follow-ups:** make not-yet-used subsystem env (S3/SMTP/Ollama) optional-until-used so
+  staging needs only real core secrets; add a `development` export condition only if
+  build-first proves a recurring footgun.
+
 ---
 
 ## Module completion matrix
 
 | Module | Status | Tasks | Key tables | Security verified | Tests |
 |---|---|---|---|---|---|
-| M00 Platform / Shared | in progress | TASK-001 (done), 002 (done), 004 (done; api skeleton/config/logging/error/OTel), 006 (REVIEW; CI gate + security scans), 004b, 005, 007–009 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images; Pino redaction (no PII/bodies); generic error bodies; helmet; **CI: Gitleaks + pnpm audit (high) + OSV + Semgrep; multer DoS patched via override** | sanity + env-loader (15 Vitest) green; smoke green; /health 200 + error-filter (apps/api); **DB suites force-run in CI**; static gates green |
+| M00 Platform / Shared | in progress | TASK-001 (done), 002 (done), 004 (done; api skeleton/config/logging/error/OTel), 006 (done; CI gate + security scans), 004b (REVIEW; api prod build + Railway staging — deploy manual/pending), 005, 007–009 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images; Pino redaction (no PII/bodies); generic error bodies; helmet; **CI: Gitleaks + pnpm audit (high) + OSV + Semgrep; multer DoS patched via override**; Railway secrets user-set (none in repo) | sanity + env-loader (15 Vitest) green; smoke green; /health 200 + error-filter (apps/api); **built api boots DB-free, /health 200**; **DB suites force-run in CI**; static gates green |
 | M01 Identity & Tenancy | in progress | TASK-003 (done), 004 (done; tenant guard) | Store, User, Membership, Subscription | **fail-closed tenant isolation** (Prisma extension + ALS context); read + write-path scoping; placeholder token (no real secret); no PII; store-scoped cascades; documented guard bypass boundaries (raw SQL / nested writes → TASK-009) | migration tests (clean + on-existing) + **tenant-isolation suite (16 cases incl. write-path)** green; **force-run in CI** (no silent skip); SKIPPED locally w/o DB |

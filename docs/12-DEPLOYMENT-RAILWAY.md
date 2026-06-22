@@ -188,3 +188,55 @@ production.
       every service; watch paths per app; `railway.json` committed.**
 - [ ] Production deploy gated on green CI; secrets set in Railway, not in git.
 - [ ] OSS observability shipping (OTel→Prometheus/Grafana/Loki; GlitchTip).
+
+## 11. Staging `api` — concrete config (TASK-004b, first deploy)
+
+First real deploy: the **`api` service + a TimescaleDB database** in the `staging`
+environment (auto-deploys from `develop`, CI-gated). **No Redis/MinIO** (nothing uses
+them yet); web/shopify-app join at TASK-005.
+
+**Committed config — `apps/api/railway.json`** (Nixpacks; precompiled `dist`):
+
+```json
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "pnpm install --frozen-lockfile && pnpm build",
+    "watchPatterns": ["apps/api/**", "packages/**"]
+  },
+  "deploy": {
+    "startCommand": "node apps/api/dist/main.js",
+    "preDeployCommand": "pnpm --filter @profitily/db migrate:deploy",
+    "healthcheckPath": "/health",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}
+```
+
+**Build/prune ordering (important):** `buildCommand` installs **all** deps (incl. dev) and
+runs `pnpm build` (SWC for `apps/api`, `tsc` for the libs → `dist`). `@swc/cli` +
+`typescript` are **build-time only**. **`prisma` is a runtime dependency of
+`@profitily/db`**, so the `preDeployCommand` migrate (and any prod devDep prune) is safe.
+`/health` is **liveness only** — it does not touch the DB (Prisma connects lazily), so the
+service boots and stays healthy even before the DB is reachable.
+
+**Env vars on the `api` service** — set in Railway only; keys mirror `.env.example`:
+
+| Var | Type | Value on staging |
+|---|---|---|
+| `DATABASE_URL` | **REFERENCE** | reference variable from the TimescaleDB service |
+| `JWT_SECRET` | **REAL-SECRET** | user-generated (≥16); never committed/printed |
+| `ENCRYPTION_KEY` | **REAL-SECRET** | user-generated (≥32 bytes); never committed/printed |
+| `NODE_ENV` | value | `production` |
+| `API_BASE_URL` | value | the generated public api domain |
+| `APP_BASE_URL` | value | staging web URL (placeholder until TASK-005) |
+| `S3_ENDPOINT`/`S3_REGION`/`S3_BUCKET`/`S3_ACCESS_KEY`/`S3_SECRET_KEY`/`S3_FORCE_PATH_STYLE` | **PLACEHOLDER** | valid-format dummies (no MinIO/S3 yet; `loadEnv` validates format only) |
+| `SMTP_HOST`/`SMTP_PORT`/`SMTP_FROM` | **PLACEHOLDER** | valid-format dummies (no SMTP yet) |
+| `OLLAMA_URL`/`OLLAMA_MODEL`/`AI_ESCALATION_ENABLED` | **PLACEHOLDER** | valid-format dummies; `AI_ESCALATION_ENABLED=false` |
+
+> The PLACEHOLDER vars exist only because `loadEnv` validates the whole env at boot; they
+> are not used by `/health`. A follow-up will make not-yet-used subsystem env
+> optional-until-used so staging eventually needs only the REAL-SECRET + REFERENCE vars.
+> `prisma`'s pre-deploy migrate requires the DB to be reachable, so add the Timescale
+> service (1 GB volume) **before** the api.

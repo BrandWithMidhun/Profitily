@@ -12,6 +12,11 @@ overrides:
   # esbuild <0.28.1: low, dev-only serve-mode CORS issue (GHSA-g7r4-m6w7-qqqr).
   # Dedupe the transitive 0.27.7 up to the patched line (we never use esbuild serve).
   esbuild: "^0.28.1"
+  # file-type <21.3.2: MEDIUM (GHSA-5v7r-6r5c-r473, GHSA-j47w-4g3g-c36v). The
+  # vulnerable 20.5.0 is build-time only (via @swc/cli's @xhmikosr binary-download
+  # chain); the runtime already uses the patched 21.3.4 (via @nestjs/common). Dedupe
+  # the build-time copy up to the patched line too.
+  file-type: "^21.3.2"
 
 # Allowlist for dependency build (postinstall) scripts — kept minimal and explicit.
 # esbuild/@swc/core fetch platform-native binaries (Vitest / NestJS transpile);
