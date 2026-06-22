@@ -34,13 +34,13 @@ export default defineConfig({
     {
       command: 'pnpm --filter @profitily/web dev',
       url: 'http://localhost:3000',
-      timeout: 120_000,
+      timeout: 240_000,
       reuseExistingServer: !process.env.CI,
     },
     {
       command: 'pnpm --filter @profitily/shopify-app dev',
       url: 'http://localhost:3002',
-      timeout: 120_000,
+      timeout: 240_000,
       reuseExistingServer: !process.env.CI,
     },
   ],
