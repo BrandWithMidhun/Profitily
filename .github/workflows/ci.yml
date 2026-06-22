@@ -77,6 +77,9 @@ jobs:
       - name: Test (DB-gated suites force-run; fail if DB unreachable)
         run: pnpm test
 
+      - name: Contract tests (Pact — in-process mock, no Docker)
+        run: pnpm test:contract
+
       - name: Build
         run: pnpm build
 

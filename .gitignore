@@ -37,3 +37,7 @@ tooling/.data/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Test harness artifacts
+.stryker-tmp/
+pacts/

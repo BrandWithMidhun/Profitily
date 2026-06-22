@@ -24,9 +24,9 @@
 | Phase 7 | AI Layer | 0 / 5 |
 | Phase 8 | Hardening & Launch | 0 / 6 |
 
-> TASK-001–004 + TASK-006 are merged. TASK-004b (Railway dashboard wiring + staging
-> `/health` manual/pending) and TASK-005 (frontend skeletons) are in `REVIEW` (PRs open
-> into `develop`). (Phase 0 also tracks TASK-009 — tenant-guard raw/nested-write hardening.)
+> TASK-001–004 + TASK-006 are merged. TASK-004b (Railway wiring manual/pending), TASK-005
+> (frontend skeletons), and TASK-007 (test harness) are in `REVIEW` (PRs open into
+> `develop`). (Phase 0 also tracks TASK-009 — tenant-guard raw/nested-write hardening.)
 
 ---
 
@@ -290,6 +290,43 @@
 - **Follow-ups:** real shell/tokens/components (TASK-008); full e2e/RTL/axe/visual harness
   + CI e2e (TASK-007); real Shopify auth/App Bridge (TASK-010/011).
 
+### TASK-007 — test harness (Testcontainers, Playwright/CI, fast-check, Stryker, k6, Pact, coverage)
+- **Date:** 2026-06-22 · **Branch:** `task/TASK-007-test-harness` → `develop`
+- **What shipped (wiring + one trivial proof per tool — no feature tests):**
+  - **`@profitily/test-support`**: Testcontainers helper (`startPostgres`+Timescale /
+    `startValkey` / `startMinio`, pinned to TASK-002 images) + `docker-gate` (skip local
+    / **fail-loud under CI/`REQUIRE_DOCKER`**, mirrors `db-gate`) + 3 integration proofs
+    (PG `SELECT 1`+timescaledb, Valkey PING, MinIO bucket head). `pnpm test:int`.
+  - **`packages/core` scaffold** (`__harnessProbe`): unit + **fast-check** property test;
+    **Stryker** (`pnpm test:mutation`, non-breaking threshold); **100% coverage enforced
+    on branch+line+function+statement** (CI fails on breach). ⚠️ **TASK-050 OWNS deleting
+    `__harnessProbe`** and replacing it with the real profit engine (`docs/06`).
+  - **Pact** consumer proof (in-process mock, no Docker) → `pnpm test:contract`.
+  - **k6** trivial scenario (`tooling/k6/smoke.js`) → `pnpm test:load` (via `grafana/k6`
+    Docker locally; runner Docker in nightly).
+  - **Playwright** extended (kept the 2 TASK-005 smokes green); nightly installs browsers.
+  - Commands wired: `test:int`, `test:contract`, `test:mutation`, `test:load`, `test:all`
+    (+ existing `test`, `test:e2e`) via turbo tasks + root scripts.
+  - **CI**: PR `verify` gains `test:contract` (fast, no Docker); new **`nightly.yml`**
+    (schedule + dispatch) runs the heavy suites — integration (`REQUIRE_DOCKER=1`), e2e
+    (+browser install), mutation, load. `security` job unchanged.
+- **`test:int` placement decision (bind-down 3 — my call): NIGHTLY + on-demand, not the
+  PR gate.** Three no-op container probes would tax every PR ~30–60s for empty signal;
+  promote `test:int` to the PR gate at the first task that writes a *real* integration
+  test (TASK-013/021/022). `test:contract` is in the PR gate (fast, no Docker, real
+  signal). The Docker-gate force-runs in CI and never silently skips.
+- **Coverage strategy:** 100%/4-metrics scoped to `packages/core` only; no global/other
+  floors yet; API ratchets to ≥80% when real services land (TASK-010+).
+- **Security/notes:** synthetic data only; no secrets/`.env` keys (`.env.example`
+  unchanged); pinned images. `ssh2`/`cpu-features` (testcontainers' SSH path) left
+  unbuilt (`allowBuilds: false`) — we use socket Docker; pure-JS fallback suffices.
+- **Proofs (all green locally):** `test` (core 100%), `test:contract` (1), `test:int`
+  (3, Docker; **3 skipped** Docker-down, **fail-loud** under `REQUIRE_DOCKER`),
+  `test:mutation` (Stryker completes), `test:load` (k6 check), `test:e2e` (2 smokes).
+  Gates: lint 8/8, typecheck 11/11, build 7/7.
+- **Deferred (stated, not built):** a11y/visual/RTL (TASK-008), real load/contract/
+  mutation gates (feature tasks), DAST (TASK-080), `test:a11y`/local `test:sec`.
+
 ---
 
 ## Module completion matrix
@@ -298,4 +335,5 @@
 |---|---|---|---|---|---|
 | M00 Platform / Shared | in progress | TASK-001 (done), 002 (done), 004 (done; api skeleton/config/logging/error/OTel), 006 (done; CI gate + security scans), 004b (REVIEW; api prod build + Railway staging — deploy manual/pending), 007–009 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images; Pino redaction (no PII/bodies); generic error bodies; helmet; **CI: Gitleaks + pnpm audit (high) + OSV + Semgrep; multer DoS patched via override**; Railway secrets user-set (none in repo) | sanity + env-loader (15 Vitest) green; smoke green; /health 200 + error-filter (apps/api); **built api boots DB-free, /health 200**; **DB suites force-run in CI**; static gates green |
 | UI surfaces (apps/web, apps/shopify-app) | skeleton | TASK-005 (REVIEW; Next 15 skeletons), 008 (shell/tokens/components), 007 (e2e harness) | — | auth = isolated marked stub (TASK-010/011); no secrets/`.env` keys; no DB/API access; Polaris/Tailwind split structural | Playwright smoke ×2 green (web :3000, shopify-app :3002); RTL/axe/visual → TASK-008 |
+| Test harness (`@profitily/test-support`, `packages/core` scaffold) | wired | TASK-007 (REVIEW); fills with real engine/integration tests at TASK-050/013/021/022 | — | docker-gate force-runs in CI (no silent skip); synthetic data only; pinned images; ssh2/cpu-features native builds disabled (socket Docker) | `test:int` (3 proofs, Docker-gated), `test:contract` (Pact), `test:mutation` (Stryker), `test:load` (k6), fast-check property + **core 100%/4-metric coverage**; nightly workflow runs heavy suites |
 | M01 Identity & Tenancy | in progress | TASK-003 (done), 004 (done; tenant guard) | Store, User, Membership, Subscription | **fail-closed tenant isolation** (Prisma extension + ALS context); read + write-path scoping; placeholder token (no real secret); no PII; store-scoped cascades; documented guard bypass boundaries (raw SQL / nested writes → TASK-009) | migration tests (clean + on-existing) + **tenant-isolation suite (16 cases incl. write-path)** green; **force-run in CI** (no silent skip); SKIPPED locally w/o DB |

@@ -20,6 +20,9 @@ overrides:
   # postcss <8.5.10: MEDIUM (GHSA-qx2v-qp2m-jg93). Transitive (Next/Tailwind build
   # tooling); 8.5.10 is a same-major, API-stable minor. Dedupe to the patched line.
   postcss: "^8.5.10"
+  # qs <6.15.2: MEDIUM (GHSA-q8mj-m7cp-5q26). Transitive (express/test tooling);
+  # 6.15.2 is a same-line patch. Dedupe to the patched version.
+  qs: "^6.15.2"
 
 # Allowlist for dependency build (postinstall) scripts — kept minimal and explicit.
 # esbuild/@swc/core fetch platform-native binaries (Vitest / NestJS transpile);
@@ -34,3 +37,8 @@ allowBuilds:
   prisma: true
   protobufjs: true
   sharp: true
+  # ssh2 + cpu-features are optional native crypto/SSH accelerators pulled by
+  # testcontainers' dockerode. We connect to Docker over the local socket/npipe (not
+  # SSH), and ssh2 has a pure-JS fallback — so these native builds are NOT needed.
+  cpu-features: false
+  ssh2: false

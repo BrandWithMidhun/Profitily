@@ -16,6 +16,14 @@
       "dependsOn": ["^build", "generate", "^generate"],
       "passThroughEnv": ["DATABASE_URL", "REQUIRE_DB", "CI"]
     },
+    "test:int": {
+      "cache": false,
+      "passThroughEnv": ["CI", "REQUIRE_DOCKER"]
+    },
+    "test:contract": {
+      "cache": false,
+      "passThroughEnv": ["CI"]
+    },
     "dev": {
       "cache": false,
       "persistent": true
