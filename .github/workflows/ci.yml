@@ -104,7 +104,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+          # No `cache: pnpm` here — this job runs no `pnpm install`, so there is no
+          # pnpm store to cache (the cache-save post-step would otherwise fail).
 
       - name: Dependency audit (pnpm)
         run: pnpm audit --audit-level=high
