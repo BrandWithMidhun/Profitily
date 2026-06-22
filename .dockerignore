@@ -1,0 +1,23 @@
+# Keep the build context lean and (critically) keep local secrets + stale
+# artifacts out of the image. Deps are installed fresh and code is built inside
+# the image, so node_modules/dist must never be copied in.
+node_modules
+**/node_modules
+dist
+**/dist
+.turbo
+**/.turbo
+
+# Never copy local env files (secrets) into the image — runtime env comes from
+# Railway. (.env.example is harmless but the image doesn't need it either.)
+.env
+.env.*
+
+.git
+.gitignore
+.github
+coverage
+**/coverage
+*.log
+playwright-report
+test-results
