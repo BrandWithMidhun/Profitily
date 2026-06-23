@@ -28,13 +28,8 @@
 | TASK-005 | `apps/web` + `apps/shopify-app` skeletons (App Router, Tailwind; Polaris). Shared layout, auth stub. | Both build & boot; **Playwright smoke** loads each app. | REVIEW |
 | TASK-006 | **CI pipeline** (GitHub Actions): install, lint, typecheck, unit+integration, build; **security scan** (Gitleaks, npm audit, Semgrep) on PRs into `develop`. Branch protection on `main`+`develop`. | CI green on a trivial PR into `develop`; secret scan runs; protection documented. | REVIEW |
 | TASK-007 | **Test harness**: Testcontainers helper (PG/Redis/MinIO), Playwright config, fast-check + Stryker + k6 + Pact wiring, coverage thresholds. | `pnpm test:int`, `test:e2e`, `test:load`, `test:mutation` commands run end-to-end. | REVIEW |
-<<<<<<< HEAD
-| TASK-008 | **UI foundation**: app shell (P0/S2), design tokens from `design/tokens`, Polaris (shopify-app) + Tailwind/shadcn (portal) setup, component-test + axe + visual-snapshot harness. | Shell renders with nav/store-switcher/date-range; **RTL + axe + Playwright** smoke green; tokens applied. | TODO |
-| TASK-009 | **Tenant-guard hardening** (when raw/nested patterns appear): ESLint rule banning `$queryRaw`/`$executeRaw` on tenant data without explicit `storeId` scoping; auto-scope or reject nested writes into tenant models. Extends the isolation suite for both. | Lint flags an unscoped raw tenant query; isolation suite covers a nested-write case. | REVIEW |
-=======
-| TASK-008 | **UI foundation**: app shell (P0/S2), design tokens from `design/tokens`, Polaris (shopify-app) + Tailwind/shadcn (portal) setup, component-test + axe + visual-snapshot harness. | Shell renders with nav/store-switcher/date-range; **RTL + axe + Playwright** smoke green; tokens applied. | REVIEW |
-| TASK-009 | **Tenant-guard hardening** (when raw/nested patterns appear): ESLint rule banning `$queryRaw`/`$executeRaw` on tenant data without explicit `storeId` scoping; auto-scope or reject nested writes into tenant models. Extends the isolation suite for both. | Lint flags an unscoped raw tenant query; isolation suite covers a nested-write case. | TODO |
->>>>>>> develop
+| TASK-008 | **UI foundation**: app shell (P0/S2), design tokens from `design/tokens`, Polaris (shopify-app) + Tailwind/shadcn (portal) setup, component-test + axe + visual-snapshot harness. | Shell renders with nav/store-switcher/date-range; **RTL + axe + Playwright** smoke green; tokens applied. | DONE |
+| TASK-009 | **Tenant-guard hardening** (when raw/nested patterns appear): ESLint rule banning `$queryRaw`/`$executeRaw` on tenant data without explicit `storeId` scoping; auto-scope or reject nested writes into tenant models. Extends the isolation suite for both. | Lint flags an unscoped raw tenant query; isolation suite covers a nested-write case. | DONE |
 
 ## Phase 1 — Shopify App, Auth & Billing
 | ID | Task | Acceptance criteria | Status |

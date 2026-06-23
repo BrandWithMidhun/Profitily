@@ -24,16 +24,10 @@
 | Phase 7 | AI Layer | 0 / 5 |
 | Phase 8 | Hardening & Launch | 0 / 6 |
 
-> TASK-001–004 + TASK-006 are merged. TASK-004b (Railway wiring manual/pending), TASK-005
-<<<<<<< HEAD
-> (frontend skeletons), TASK-007 (test harness), TASK-008 (UI foundation), and TASK-009
-> (tenant-guard hardening) are in `REVIEW` (PRs open into `develop`).
-=======
-> (frontend skeletons), TASK-007 (test harness), and TASK-008 (UI foundation) are in
-> `REVIEW` (PRs open into `develop`). **Milestone: with TASK-008 the Phase-0 foundation
-> build (TASK-001–008) is complete/in-review — only TASK-009 (tenant-guard
-> raw/nested-write hardening) remains in Phase 0.**
->>>>>>> develop
+> TASK-001–009 are all merged. **Phase 0 (TASK-001–008) is complete**; TASK-009
+> (tenant-guard hardening) was promoted into Phase 1 as a security pre-req and is also
+> done. (TASK-004b's committable build merged; its Railway dashboard wiring remains a
+> manual ops step.)
 
 ---
 
@@ -334,46 +328,6 @@
 - **Deferred (stated, not built):** a11y/visual/RTL (TASK-008), real load/contract/
   mutation gates (feature tasks), DAST (TASK-080), `test:a11y`/local `test:sec`.
 
-<<<<<<< HEAD
-### TASK-009 — tenant-guard hardening (raw-query + nested-write boundaries)
-- **Date:** 2026-06-23 · **Branch:** `task/TASK-009-tenant-guard-hardening` → `develop`
-- **What shipped (sev-1; closed the two TASK-004 bypass boundaries, fail-closed):**
-  - **Raw SQL — three layers:** (1) ESLint `no-restricted-syntax` ban (shared preset,
-    error, repo-wide) on `$queryRaw`/`$queryRawUnsafe`/`$executeRaw`/`$executeRawUnsafe`;
-    (2) **runtime throw** — the guarded client's extension refuses all four raw ops
-    (`TenantIsolationError`); (3) audited **escape hatch** = unguarded client + manual
-    `storeId` predicate + greppable `// TENANT-RAW-OK:` disable. **Bind-down 1 → world (a)
-    shipped:** Prisma 6.19.3's query extension exposes raw-op hooks
-    (`TypeMap['other']['operations']`), so the runtime layer is real, not lint-only.
-  - **Nested writes — detect & REJECT (not auto-scope):** DMMF-derived
-    `relationField → targetModel` map; a bounded recursive scan of write payloads throws
-    on any nested write verb targeting a **tenant** model. Non-tenant nesting (e.g.
-    connecting a global `User`) is allowed. Limit stated: cross-tenant `connect`
-    verification needs a DB read → rejected, not scoped.
-  - **Isolation suite** extended (real-PG, db-gated, force-run in CI): group (e) raw
-    (guarded refuses; escape-hatch unguarded scoped read) + group (f) nested (reject via
-    `User→Membership` and `Store.subscription` with **proof nothing written**; allowed
-    non-tenant nesting; safe top-level pattern). **16 → 22 cases.**
-  - ESLint RuleTester unit test (`packages/config`) proves the raw verbs are flagged and
-    scoped model ops are not.
-- **Bind-down 2 (grep for existing raw):** **none** — only the doc-comment mentions in
-  `extension.ts`; tests/seed/smoke use `pg` directly. Ban landed clean.
-- **Bind-down 3 (bootstrap path linkage → TASK-010/011):** new-tenant **provisioning**
-  (store + its first tenant rows) must run on the **unguarded** client — nested tenant
-  writes are now rejected on the guarded client. No `createUnscopedClient()` added
-  (speculative, no caller); **TASK-010/011 owns adding the named bootstrap path** with its
-  first real caller.
-- **Security/notes:** sev-1 fail-closed; synthetic data only; no secrets/`.env` keys
-  (`.env.example` unchanged); guard core (ALS + extension) unchanged.
-- **Proofs:** lint 8/8 (0 errors), typecheck 11/11, build 7/7; `pnpm test` config 7
-  (incl. raw-ban RuleTester) + db 24 (isolation **22** incl. e/f + migrate 2) + api 4 —
-  real-PG via `pnpm infra:up` on alt ports (5433; markopz held 5432), force-run with
-  `REQUIRE_DB=1`.
-- **Flag raised (separate PR):** `.gitignore` `reports/` silently ignores the
-  `apps/web/src/app/reports/` route — **PR #11 (TASK-008) is missing that route**. Out of
-  TASK-009 scope; flagged for the planner to fix in PR #11 (narrow the pattern to a
-  root-anchored `/reports/` + re-add the route).
-=======
 ### TASK-008 — UI foundation (app shell, design tokens, RTL + axe + visual harness)
 - **Date:** 2026-06-23 · **Branch:** `task/TASK-008-ui-foundation` → `develop`
 - **What shipped (shell + tokens + harness + state primitives — no page content):**
@@ -409,9 +363,47 @@
 - **Deviations:** `@vitejs/plugin-react` pinned to v4 (Vite 6 / Vitest 3 compat; v6 needs
   Vite 7); muted-foreground AA override (above); `ssh2`/`cpu-features` already disabled
   (TASK-007). No `design/` mockup drop (only tokens.json) — built to §5 P0 / §4 S2 spec.
-- **Phase-0 milestone:** with TASK-008 the foundation build (TASK-001–008) is
-  complete/in-review; only TASK-009 (tenant-guard hardening) remains in Phase 0.
->>>>>>> develop
+- **Phase-0 milestone:** Phase 0 (TASK-001–008) complete; TASK-009 follows as a Phase 1
+  security pre-req.
+
+### TASK-009 — tenant-guard hardening (raw-query + nested-write boundaries)
+- **Date:** 2026-06-23 · **Branch:** `task/TASK-009-tenant-guard-hardening` → `develop`
+- **What shipped (sev-1; closed the two TASK-004 bypass boundaries, fail-closed):**
+  - **Raw SQL — three layers:** (1) ESLint `no-restricted-syntax` ban (shared preset,
+    error, repo-wide) on `$queryRaw`/`$queryRawUnsafe`/`$executeRaw`/`$executeRawUnsafe`;
+    (2) **runtime throw** — the guarded client's extension refuses all four raw ops
+    (`TenantIsolationError`); (3) audited **escape hatch** = unguarded client + manual
+    `storeId` predicate + greppable `// TENANT-RAW-OK:` disable. **Bind-down 1 → world (a)
+    shipped:** Prisma 6.19.3's query extension exposes raw-op hooks
+    (`TypeMap['other']['operations']`), so the runtime layer is real, not lint-only.
+  - **Nested writes — detect & REJECT (not auto-scope):** DMMF-derived
+    `relationField → targetModel` map; a bounded recursive scan of write payloads throws
+    on any nested write verb targeting a **tenant** model. Non-tenant nesting (e.g.
+    connecting a global `User`) is allowed. Limit stated: cross-tenant `connect`
+    verification needs a DB read → rejected, not scoped.
+  - **Isolation suite** extended (real-PG, db-gated, force-run in CI): group (e) raw
+    (guarded refuses; escape-hatch unguarded scoped read) + group (f) nested (reject via
+    `User→Membership` and `Store.subscription` with **proof nothing written**; allowed
+    non-tenant nesting; safe top-level pattern). **16 → 22 cases.**
+  - ESLint RuleTester unit test (`packages/config`) proves the raw verbs are flagged and
+    scoped model ops are not.
+- **Bind-down 2 (grep for existing raw):** **none** — only the doc-comment mentions in
+  `extension.ts`; tests/seed/smoke use `pg` directly. Ban landed clean.
+- **Bind-down 3 (bootstrap path linkage → TASK-010/011):** new-tenant **provisioning**
+  (store + its first tenant rows) must run on the **unguarded** client — nested tenant
+  writes are now rejected on the guarded client. No `createUnscopedClient()` added
+  (speculative, no caller); **TASK-010/011 owns adding the named bootstrap path** with its
+  first real caller.
+- **Security/notes:** sev-1 fail-closed; synthetic data only; no secrets/`.env` keys
+  (`.env.example` unchanged); guard core (ALS + extension) unchanged.
+- **Proofs:** lint 8/8 (0 errors), typecheck 11/11, build 7/7; `pnpm test` config 7
+  (incl. raw-ban RuleTester) + db 24 (isolation **22** incl. e/f + migrate 2) + api 4 —
+  real-PG via `pnpm infra:up` on alt ports (5433; markopz held 5432), force-run with
+  `REQUIRE_DB=1`.
+- **Flag raised (separate PR):** `.gitignore` `reports/` silently ignored the
+  `apps/web/src/app/reports/` route — PR #11 (TASK-008) shipped without that route — now
+  **resolved in `fix/gitignore-reports-route`** (root-anchored the pattern + re-added the
+  route).
 
 ---
 
