@@ -40,6 +40,13 @@ export default tseslint.config(
           message:
             'Prisma raw SQL ($queryRaw/$queryRawUnsafe/$executeRaw/$executeRawUnsafe) bypasses the tenant guard (docs/13 §2/§7). Use scoped Prisma model operations. For a sanctioned raw query, use the unguarded client with a manual storeId predicate and disable this rule with a justification: // eslint-disable-next-line no-restricted-syntax -- TENANT-RAW-OK: <reason + storeId predicate>.',
         },
+        {
+          // The unguarded bootstrap client has NO tenant guard (docs/13 §2, TASK-009/010).
+          // It is only sanctioned for new-tenant provisioning at Shopify install.
+          selector: "CallExpression[callee.name='createUnscopedClient']",
+          message:
+            'createUnscopedClient() has NO tenant guard — it can read/write across tenants. Use the guarded createTenantClient(). If this truly is new-tenant provisioning before a tenant context exists, justify it: // eslint-disable-next-line no-restricted-syntax -- UNSCOPED-BOOTSTRAP-OK: <reason>.',
+        },
       ],
     },
   },

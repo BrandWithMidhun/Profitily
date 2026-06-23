@@ -6,6 +6,7 @@ import { AllExceptionsFilter } from './common/all-exceptions.filter.js';
 import { ConfigModule } from './config/config.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { ShopifyAuthModule } from './shopify-auth/shopify-auth.module.js';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     ConfigModule,
     PrismaModule,
     HealthModule,
+    ShopifyAuthModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: AllExceptionsFilter }],
 })

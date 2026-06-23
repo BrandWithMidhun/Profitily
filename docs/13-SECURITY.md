@@ -56,7 +56,9 @@ operations. The two paths it cannot scope are closed **fail-closed**, not left o
   **Never** in code, logs, or git. `.env` is git-ignored; **Gitleaks** runs in CI.
 - **Token encryption:** Shopify tokens and integration credentials encrypted at rest
   with **AES-256-GCM envelope encryption**; master key in the secret store; support key
-  rotation (re-wrap on rotate).
+  rotation (re-wrap on rotate). *Implemented (TASK-010):* `@profitily/shared`
+  `encryptSecret`/`decryptSecret` — fresh IV, verified auth tag, HKDF-derived key from
+  `ENCRYPTION_KEY`, versioned `v<n>:…` blob as the rotation seam.
 - New secret → placeholder in `.env.example` + documented; real value only in the
   secret store.
 
