@@ -25,8 +25,10 @@
 | Phase 8 | Hardening & Launch | 0 / 6 |
 
 > TASK-001–004 + TASK-006 are merged. TASK-004b (Railway wiring manual/pending), TASK-005
-> (frontend skeletons), and TASK-007 (test harness) are in `REVIEW` (PRs open into
-> `develop`). (Phase 0 also tracks TASK-009 — tenant-guard raw/nested-write hardening.)
+> (frontend skeletons), TASK-007 (test harness), and TASK-008 (UI foundation) are in
+> `REVIEW` (PRs open into `develop`). **Milestone: with TASK-008 the Phase-0 foundation
+> build (TASK-001–008) is complete/in-review — only TASK-009 (tenant-guard
+> raw/nested-write hardening) remains in Phase 0.**
 
 ---
 
@@ -327,6 +329,44 @@
 - **Deferred (stated, not built):** a11y/visual/RTL (TASK-008), real load/contract/
   mutation gates (feature tasks), DAST (TASK-080), `test:a11y`/local `test:sec`.
 
+### TASK-008 — UI foundation (app shell, design tokens, RTL + axe + visual harness)
+- **Date:** 2026-06-23 · **Branch:** `task/TASK-008-ui-foundation` → `develop`
+- **What shipped (shell + tokens + harness + state primitives — no page content):**
+  - **Portal app shell** (`apps/web`, P0) in the root layout: left **Sidebar** (13
+    sections from a single `lib/nav.ts`), **TopBar** (StoreSwitcher [stub stores] ·
+    DateRange [preset dropdown] · AccountMenu [stub session]), **Breadcrumbs**, global
+    **Toaster**, responsive mobile **Sheet** drawer. Thin placeholder pages for all 13
+    nav routes + home (PageHeader + ComingSoon, bind-down 3).
+  - **Shopify app-home** (`apps/shopify-app`, S2): real Polaris page — static sync-status
+    card (per-source lag), plan badge, setup-progress, "Open Profitily Portal" CTA.
+    Polaris only.
+  - **Design tokens:** `design/tokens/tokens.json` is canonical, applied via **Tailwind v4
+    `@theme`** (CSS-first); **Inter** via `next/font`; `tabular-money` figures. **A11y
+    override (flagged):** the muted-foreground role uses slate-600 (`#475569`) because
+    tokens `textMuted` (`#64748b`) only reaches ~4.34:1 on the slate surfaces — below AA
+    4.5:1; raw token kept for icons/borders.
+  - **shadcn primitives AS-USED only** (button, dropdown-menu, select, sheet, skeleton,
+    sonner, avatar, separator) hand-added; **state primitives** (EmptyState, ErrorState)
+    + **money primitives** ProfitValue/Delta.
+  - **ProfitValue/Delta a11y contract (bind-down 1):** profit/loss = **sign + label +
+    colour, never colour alone**; money formatted from **BigInt minor units + currency**,
+    tabular (bind-down 4). RTL test asserts sign+label explicitly.
+  - **Harness:** RTL (`vitest`+`jsdom`+`@vitejs/plugin-react` v4) in both apps joined to
+    `pnpm test` (**PR gate**) + **vitest-axe** structural a11y; **@axe-core/playwright**
+    full-DOM a11y + Playwright **visual snapshots** wired **NIGHTLY** (`test:e2e` =
+    smoke+a11y; `test:visual` = visual). Visual baselines are **Linux PNGs** generated in
+    the Playwright Docker image (`e2e/visual/README.md` documents the regen).
+- **Security/notes:** no secrets, no `.env` keys (`.env.example` unchanged), no DB/API/PII;
+  auth = the marked stub; a11y is a gate (shell + app-home axe-clean incl. contrast).
+- **Proofs:** lint 8/8, typecheck 11/11, build 7/7 (13 routes + home prerender static);
+  `pnpm test` web RTL 11 + shopify 1 (shell vitest-axe clean); smoke+a11y **5 green**
+  (shell + app-home axe-clean incl. contrast); visual baselines committed (Docker-Linux).
+- **Deviations:** `@vitejs/plugin-react` pinned to v4 (Vite 6 / Vitest 3 compat; v6 needs
+  Vite 7); muted-foreground AA override (above); `ssh2`/`cpu-features` already disabled
+  (TASK-007). No `design/` mockup drop (only tokens.json) — built to §5 P0 / §4 S2 spec.
+- **Phase-0 milestone:** with TASK-008 the foundation build (TASK-001–008) is
+  complete/in-review; only TASK-009 (tenant-guard hardening) remains in Phase 0.
+
 ---
 
 ## Module completion matrix
@@ -334,6 +374,6 @@
 | Module | Status | Tasks | Key tables | Security verified | Tests |
 |---|---|---|---|---|---|
 | M00 Platform / Shared | in progress | TASK-001 (done), 002 (done), 004 (done; api skeleton/config/logging/error/OTel), 006 (done; CI gate + security scans), 004b (REVIEW; api prod build + Railway staging — deploy manual/pending), 007–009 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images; Pino redaction (no PII/bodies); generic error bodies; helmet; **CI: Gitleaks + pnpm audit (high) + OSV + Semgrep; multer DoS patched via override**; Railway secrets user-set (none in repo) | sanity + env-loader (15 Vitest) green; smoke green; /health 200 + error-filter (apps/api); **built api boots DB-free, /health 200**; **DB suites force-run in CI**; static gates green |
-| UI surfaces (apps/web, apps/shopify-app) | skeleton | TASK-005 (REVIEW; Next 15 skeletons), 008 (shell/tokens/components), 007 (e2e harness) | — | auth = isolated marked stub (TASK-010/011); no secrets/`.env` keys; no DB/API access; Polaris/Tailwind split structural | Playwright smoke ×2 green (web :3000, shopify-app :3002); RTL/axe/visual → TASK-008 |
+| UI surfaces (apps/web, apps/shopify-app) | shell built | TASK-005 (skeletons), 008 (REVIEW; shell + tokens + state/money primitives + RTL/axe/visual harness); pages fill in Phase 6 | — | auth = isolated marked stub (TASK-010/011); no secrets/`.env` keys; no DB/API access; Polaris/Tailwind split structural; **shell axe-clean (incl. contrast); profit/loss not colour-only** | RTL (web 11 + shopify 1) + vitest-axe in PR gate; @axe-core/playwright + Playwright visual + smoke (web/shopify-app) nightly; tokens from `design/tokens/tokens.json` |
 | Test harness (`@profitily/test-support`, `packages/core` scaffold) | wired | TASK-007 (REVIEW); fills with real engine/integration tests at TASK-050/013/021/022 | — | docker-gate force-runs in CI (no silent skip); synthetic data only; pinned images; ssh2/cpu-features native builds disabled (socket Docker) | `test:int` (3 proofs, Docker-gated), `test:contract` (Pact), `test:mutation` (Stryker), `test:load` (k6), fast-check property + **core 100%/4-metric coverage**; nightly workflow runs heavy suites |
 | M01 Identity & Tenancy | in progress | TASK-003 (done), 004 (done; tenant guard) | Store, User, Membership, Subscription | **fail-closed tenant isolation** (Prisma extension + ALS context); read + write-path scoping; placeholder token (no real secret); no PII; store-scoped cascades; documented guard bypass boundaries (raw SQL / nested writes → TASK-009) | migration tests (clean + on-existing) + **tenant-isolation suite (16 cases incl. write-path)** green; **force-run in CI** (no silent skip); SKIPPED locally w/o DB |

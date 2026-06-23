@@ -1,11 +1,14 @@
-export default function Home() {
+import { ComingSoon } from '@/components/shell/coming-soon';
+import { PageHeader } from '@/components/shell/page-header';
+
+export default function DashboardPage() {
   return (
-    <section>
-      <h1 className="text-2xl font-bold">Profitily Portal</h1>
-      <p className="mt-2 text-gray-600">
-        Skeleton home — the executive dashboard and full app shell arrive in a later
-        task.
-      </p>
-    </section>
+    <>
+      <PageHeader
+        title="Executive Dashboard"
+        description="Your true profit at a glance — KPIs, profit waterfall, and trends."
+      />
+      <ComingSoon feature="The executive dashboard" />
+    </>
   );
 }
