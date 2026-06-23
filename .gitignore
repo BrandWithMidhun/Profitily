@@ -17,7 +17,7 @@ coverage/
 playwright-report/
 test-results/
 stryker.log
-reports/
+/reports/
 
 # Logs
 *.log
