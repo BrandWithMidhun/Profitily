@@ -55,4 +55,16 @@ describe('shared ESLint preset — Prisma raw SQL ban', () => {
       0,
     );
   });
+
+  it('flags an unguarded createUnscopedClient() call', () => {
+    const messages = lint('const db = createUnscopedClient();');
+    expect(messages.some((m) => m.ruleId === 'no-restricted-syntax')).toBe(true);
+  });
+
+  it('does NOT flag the guarded createTenantClient()', () => {
+    const messages = lint('const db = createTenantClient();');
+    expect(messages.filter((m) => m.ruleId === 'no-restricted-syntax')).toHaveLength(
+      0,
+    );
+  });
 });

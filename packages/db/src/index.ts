@@ -11,3 +11,5 @@ export { getStoreId, runWithStore } from './tenant/context.js';
 export { TenantIsolationError, tenantExtension } from './tenant/extension.js';
 export { createTenantClient } from './tenant/client.js';
 export type { TenantClient } from './tenant/client.js';
+export { createUnscopedClient } from './tenant/bootstrap.js';
+export type { UnscopedClient } from './tenant/bootstrap.js';

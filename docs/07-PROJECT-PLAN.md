@@ -34,7 +34,7 @@
 ## Phase 1 — Shopify App, Auth & Billing
 | ID | Task | Acceptance criteria | Status |
 |---|---|---|---|
-| TASK-010 | Shopify OAuth install + encrypted token storage. | Install persists encrypted token; **idempotency test** for re-install. | TODO |
+| TASK-010 | Shopify OAuth install + encrypted token storage. | Install persists encrypted token; **idempotency test** for re-install. | REVIEW |
 | TASK-011 | Session auth (JWT) + Shopify session verification; user/membership provisioning. | Embedded requests authed; **multi-tenant isolation test** (agency user, 2 stores). | TODO |
 | TASK-012 | Shopify managed billing (Free/Growth/Pro/Agency) + plan gating. | Plan select creates charge; **integration test**: gated route blocked under-tier. | TODO |
 | TASK-013 | Webhooks: registration, HMAC verify, idempotent enqueue; handlers for uninstall/orders/refunds/products. | **Contract test** for payload shape; **replay test** proves no-op on redelivery. | TODO |

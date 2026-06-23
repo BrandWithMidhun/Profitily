@@ -405,6 +405,51 @@
   **resolved in `fix/gitignore-reports-route`** (root-anchored the pattern + re-added the
   route).
 
+### TASK-010 — Shopify OAuth install + encrypted token storage
+- **Date:** 2026-06-23 · **Branch:** `task/TASK-010-shopify-oauth` → `develop`
+- **What shipped (M02 OAuth install + M01 provisioning + M00 crypto):**
+  - **Crypto util** (`@profitily/shared`): `encryptSecret`/`decryptSecret`, **AES-256-GCM**,
+    fresh 12-byte IV, 16-byte auth tag verified on decrypt; blob
+    `v<n>:iv:tag:ciphertext`; 32-byte key **HKDF-SHA256-derived** from `ENCRYPTION_KEY`
+    (config contract unchanged); `v<n>` = rotation seam (versioned key map + re-wrap).
+  - **Named unguarded-bootstrap path** (`@profitily/db` `createUnscopedClient()`) —
+    closes the TASK-009 deferral. **ESLint-gated** (`UNSCOPED-BOOTSTRAP-OK` marker
+    required); sole production caller = `BootstrapPrismaService` (provisioning).
+  - **OAuth module** (`apps/api/src/shopify-auth`): `GET /auth/shopify/install` (validate
+    shop, signed HttpOnly SameSite=Lax state cookie, redirect) + `GET /auth/shopify/callback`
+    (**verify shop-format → HMAC (timing-safe) → state, fail-closed**, then token exchange
+    → shop read → provision). Shopify calls behind an **injectable client** (stubbed in
+    tests). All boundaries **zod-validated**.
+  - **Provisioning** (M01): idempotent upserts `Store` (encrypted token, `baseCurrency`/
+    `country` from Shopify shop — ADR 0001), owner `User`, `Membership(OWNER)`; emits
+    `store.installed` (thin logger seam, no consumer yet).
+  - Config: `SHOPIFY_API_VERSION` (default `2026-04`) added; scopes
+    `read_orders,read_products,read_customers` (least-privilege). `.env.example` updated.
+- **Security (the deliverable):** **token encrypted at rest** — integration test asserts
+  the DB column is not and does not contain the plaintext (`v1:` blob; decrypts back) and
+  nothing logs the token (bind-down 1); HMAC+state verified before any side effect
+  (bind-down 2, each rejection path tested — no exchange/DB write on failure); master key
+  only via config; unguarded bootstrap narrowly named + lint-gated (bind-down 3).
+- **Tests:** crypto unit 9; HMAC/state/shop-domain unit 18; controller verify-order 7
+  (each fail-closed path); **install integration (real-PG, db-gated)** 2 (encrypted
+  persist + idempotent re-install, counts unchanged); ESLint RuleTester proves the
+  `createUnscopedClient` gate. lint 8/8 (0 err), typecheck 11/11, build 7/7, full `pnpm
+  test` green on real PG (alt port 5433; markopz held 5432).
+- **⚠️ Live verification (bind-down 5) — NOT done by executor:** completing a real OAuth
+  consent against the dev app needs a browser + dev store + the Railway-set `SHOPIFY_*`
+  secrets, which the executor cannot drive. **Flagged for the planner to run** (install
+  via the dev app → confirm handshake completes, token persists encrypted, live
+  `baseCurrency` reads). Everything locally verifiable is green.
+- **Backlog notes (bind-down 4 — direction only, not built):**
+  1. **Sync/integration layer (TASK-020+) should default to GraphQL.** Shopify is
+     freezing REST for new fields; the single install-time `shop.json` REST read here is
+     acceptable, but the data-ingestion client should be GraphQL-first.
+  2. **Expiring offline tokens are required for public apps from 2027-01-01.** Token
+     storage will need an **expiry/refresh seam** (store token expiry + refresh flow)
+     before then — not built now.
+- **Repo config:** no `shopify.app.toml` in the repo → the Dev Dashboard is the source of
+  truth (nothing to reconcile); noted.
+
 ---
 
 ## Module completion matrix
@@ -414,4 +459,5 @@
 | M00 Platform / Shared | in progress | TASK-001 (done), 002 (done), 004 (done; api skeleton/config/logging/error/OTel), 006 (done; CI gate + security scans), 004b (REVIEW; api prod build + Railway staging — deploy manual/pending), 007–009 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images; Pino redaction (no PII/bodies); generic error bodies; helmet; **CI: Gitleaks + pnpm audit (high) + OSV + Semgrep; multer DoS patched via override**; Railway secrets user-set (none in repo) | sanity + env-loader (15 Vitest) green; smoke green; /health 200 + error-filter (apps/api); **built api boots DB-free, /health 200**; **DB suites force-run in CI**; static gates green |
 | UI surfaces (apps/web, apps/shopify-app) | shell built | TASK-005 (skeletons), 008 (REVIEW; shell + tokens + state/money primitives + RTL/axe/visual harness); pages fill in Phase 6 | — | auth = isolated marked stub (TASK-010/011); no secrets/`.env` keys; no DB/API access; Polaris/Tailwind split structural; **shell axe-clean (incl. contrast); profit/loss not colour-only** | RTL (web 11 + shopify 1) + vitest-axe in PR gate; @axe-core/playwright + Playwright visual + smoke (web/shopify-app) nightly; tokens from `design/tokens/tokens.json` |
 | Test harness (`@profitily/test-support`, `packages/core` scaffold) | wired | TASK-007 (REVIEW); fills with real engine/integration tests at TASK-050/013/021/022 | — | docker-gate force-runs in CI (no silent skip); synthetic data only; pinned images; ssh2/cpu-features native builds disabled (socket Docker) | `test:int` (3 proofs, Docker-gated), `test:contract` (Pact), `test:mutation` (Stryker), `test:load` (k6), fast-check property + **core 100%/4-metric coverage**; nightly workflow runs heavy suites |
-| M01 Identity & Tenancy | in progress | TASK-003 (done), 004 (done; tenant guard), 009 (REVIEW; raw + nested boundaries closed) | Store, User, Membership, Subscription | **fail-closed tenant isolation** (Prisma extension + ALS context); read + write-path scoping; **raw SQL refused on guarded client + ESLint-banned repo-wide**; **nested tenant writes rejected**; placeholder token (no real secret); no PII; store-scoped cascades | migration tests (clean + on-existing) + **tenant-isolation suite (22 cases incl. write-path, raw, nested)** + ESLint raw-ban RuleTester green; **force-run in CI** (no silent skip); SKIPPED locally w/o DB |
+| M01 Identity & Tenancy | in progress | TASK-003 (done), 004 (done; tenant guard), 009 (REVIEW; raw + nested boundaries closed), 010 (REVIEW; store/owner provisioning at install) | Store, User, Membership, Subscription | **fail-closed tenant isolation** (Prisma extension + ALS context); read + write-path scoping; **raw SQL refused on guarded client + ESLint-banned repo-wide**; **nested tenant writes rejected**; **provisioning via lint-gated unguarded bootstrap only**; no PII; store-scoped cascades | migration tests (clean + on-existing) + **tenant-isolation suite (22 cases incl. write-path, raw, nested)** + ESLint raw-ban/bootstrap RuleTester green; **force-run in CI** (no silent skip); SKIPPED locally w/o DB |
+| M02 Shopify Integration | in progress | TASK-010 (REVIEW; OAuth install + encrypted token); webhooks/sync → 013/020+ | Store (token/currency at install) | **OAuth state + HMAC verified fail-closed before any side effect** (timing-safe); **access token AES-256-GCM encrypted at rest** (never plaintext/logged); least-privilege scopes; zod at every boundary; `baseCurrency` from Shopify (ADR 0001) | crypto unit (9) + HMAC/state/shop-domain (18) + controller verify-order (7) + **install integration real-PG (encrypted persist + idempotent re-install)**; live dev-app install flagged for planner |

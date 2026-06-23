@@ -3,3 +3,4 @@
  */
 export { envSchema, loadEnv } from './env.js';
 export type { Env } from './env.js';
+export { decryptSecret, encryptSecret } from './crypto.js';
