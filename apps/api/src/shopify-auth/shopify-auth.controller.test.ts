@@ -86,10 +86,17 @@ describe('ShopifyAuthController', () => {
     it('sets a signed state cookie and redirects to Shopify authorize', () => {
       const res = mockRes();
       controller.install(SHOP, res);
+      // Cross-site OAuth state cookie (non-dev mode): SameSite=None; Secure; Partitioned.
       expect(res.cookie).toHaveBeenCalledWith(
         'shopify_oauth_state',
         expect.any(String),
-        expect.objectContaining({ httpOnly: true, signed: true, sameSite: 'lax' }),
+        expect.objectContaining({
+          httpOnly: true,
+          signed: true,
+          sameSite: 'none',
+          secure: true,
+          partitioned: true,
+        }),
       );
       const url = res.redirect.mock.calls[0]?.[0] as string;
       expect(url).toContain(`https://${SHOP}/admin/oauth/authorize`);

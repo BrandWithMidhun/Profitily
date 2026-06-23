@@ -39,13 +39,21 @@ export class ShopifyAuthController {
     }
     const { apiKey, scopes, base } = this.requireConfig();
     const state = generateState();
+    // The OAuth return from Shopify is a CROSS-SITE navigation (and may run inside
+    // Shopify's admin third-party context), so the state cookie must be
+    // `SameSite=None; Secure; Partitioned` (CHIPS) to be sent back on the callback — a
+    // Lax/non-Partitioned cookie is dropped and the state check then fails. Relax ONLY
+    // for local HTTP development, where `Secure` cookies won't set (NODE_ENV is
+    // `production` on staging+prod and `test` under vitest — both emit the secure form).
+    const isLocalDev = this.env.NODE_ENV === 'development';
     res.cookie(STATE_COOKIE, state, {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: this.env.NODE_ENV === 'production',
       signed: true,
       maxAge: 10 * 60 * 1000,
       path: '/auth/shopify',
+      sameSite: isLocalDev ? 'lax' : 'none',
+      secure: !isLocalDev,
+      partitioned: !isLocalDev,
     });
     const redirectUri = `${base}/auth/shopify/callback`;
     const url =
