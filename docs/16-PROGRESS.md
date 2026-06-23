@@ -25,8 +25,8 @@
 | Phase 8 | Hardening & Launch | 0 / 6 |
 
 > TASK-001–004 + TASK-006 are merged. TASK-004b (Railway wiring manual/pending), TASK-005
-> (frontend skeletons), and TASK-007 (test harness) are in `REVIEW` (PRs open into
-> `develop`). (Phase 0 also tracks TASK-009 — tenant-guard raw/nested-write hardening.)
+> (frontend skeletons), TASK-007 (test harness), TASK-008 (UI foundation), and TASK-009
+> (tenant-guard hardening) are in `REVIEW` (PRs open into `develop`).
 
 ---
 
@@ -327,6 +327,45 @@
 - **Deferred (stated, not built):** a11y/visual/RTL (TASK-008), real load/contract/
   mutation gates (feature tasks), DAST (TASK-080), `test:a11y`/local `test:sec`.
 
+### TASK-009 — tenant-guard hardening (raw-query + nested-write boundaries)
+- **Date:** 2026-06-23 · **Branch:** `task/TASK-009-tenant-guard-hardening` → `develop`
+- **What shipped (sev-1; closed the two TASK-004 bypass boundaries, fail-closed):**
+  - **Raw SQL — three layers:** (1) ESLint `no-restricted-syntax` ban (shared preset,
+    error, repo-wide) on `$queryRaw`/`$queryRawUnsafe`/`$executeRaw`/`$executeRawUnsafe`;
+    (2) **runtime throw** — the guarded client's extension refuses all four raw ops
+    (`TenantIsolationError`); (3) audited **escape hatch** = unguarded client + manual
+    `storeId` predicate + greppable `// TENANT-RAW-OK:` disable. **Bind-down 1 → world (a)
+    shipped:** Prisma 6.19.3's query extension exposes raw-op hooks
+    (`TypeMap['other']['operations']`), so the runtime layer is real, not lint-only.
+  - **Nested writes — detect & REJECT (not auto-scope):** DMMF-derived
+    `relationField → targetModel` map; a bounded recursive scan of write payloads throws
+    on any nested write verb targeting a **tenant** model. Non-tenant nesting (e.g.
+    connecting a global `User`) is allowed. Limit stated: cross-tenant `connect`
+    verification needs a DB read → rejected, not scoped.
+  - **Isolation suite** extended (real-PG, db-gated, force-run in CI): group (e) raw
+    (guarded refuses; escape-hatch unguarded scoped read) + group (f) nested (reject via
+    `User→Membership` and `Store.subscription` with **proof nothing written**; allowed
+    non-tenant nesting; safe top-level pattern). **16 → 22 cases.**
+  - ESLint RuleTester unit test (`packages/config`) proves the raw verbs are flagged and
+    scoped model ops are not.
+- **Bind-down 2 (grep for existing raw):** **none** — only the doc-comment mentions in
+  `extension.ts`; tests/seed/smoke use `pg` directly. Ban landed clean.
+- **Bind-down 3 (bootstrap path linkage → TASK-010/011):** new-tenant **provisioning**
+  (store + its first tenant rows) must run on the **unguarded** client — nested tenant
+  writes are now rejected on the guarded client. No `createUnscopedClient()` added
+  (speculative, no caller); **TASK-010/011 owns adding the named bootstrap path** with its
+  first real caller.
+- **Security/notes:** sev-1 fail-closed; synthetic data only; no secrets/`.env` keys
+  (`.env.example` unchanged); guard core (ALS + extension) unchanged.
+- **Proofs:** lint 8/8 (0 errors), typecheck 11/11, build 7/7; `pnpm test` config 7
+  (incl. raw-ban RuleTester) + db 24 (isolation **22** incl. e/f + migrate 2) + api 4 —
+  real-PG via `pnpm infra:up` on alt ports (5433; markopz held 5432), force-run with
+  `REQUIRE_DB=1`.
+- **Flag raised (separate PR):** `.gitignore` `reports/` silently ignores the
+  `apps/web/src/app/reports/` route — **PR #11 (TASK-008) is missing that route**. Out of
+  TASK-009 scope; flagged for the planner to fix in PR #11 (narrow the pattern to a
+  root-anchored `/reports/` + re-add the route).
+
 ---
 
 ## Module completion matrix
@@ -336,4 +375,4 @@
 | M00 Platform / Shared | in progress | TASK-001 (done), 002 (done), 004 (done; api skeleton/config/logging/error/OTel), 006 (done; CI gate + security scans), 004b (REVIEW; api prod build + Railway staging — deploy manual/pending), 007–009 | — | eslint-plugin-security active; engine-strict; frozen lockfile; local-only dev creds; secret-safe env validation; pinned images; Pino redaction (no PII/bodies); generic error bodies; helmet; **CI: Gitleaks + pnpm audit (high) + OSV + Semgrep; multer DoS patched via override**; Railway secrets user-set (none in repo) | sanity + env-loader (15 Vitest) green; smoke green; /health 200 + error-filter (apps/api); **built api boots DB-free, /health 200**; **DB suites force-run in CI**; static gates green |
 | UI surfaces (apps/web, apps/shopify-app) | skeleton | TASK-005 (REVIEW; Next 15 skeletons), 008 (shell/tokens/components), 007 (e2e harness) | — | auth = isolated marked stub (TASK-010/011); no secrets/`.env` keys; no DB/API access; Polaris/Tailwind split structural | Playwright smoke ×2 green (web :3000, shopify-app :3002); RTL/axe/visual → TASK-008 |
 | Test harness (`@profitily/test-support`, `packages/core` scaffold) | wired | TASK-007 (REVIEW); fills with real engine/integration tests at TASK-050/013/021/022 | — | docker-gate force-runs in CI (no silent skip); synthetic data only; pinned images; ssh2/cpu-features native builds disabled (socket Docker) | `test:int` (3 proofs, Docker-gated), `test:contract` (Pact), `test:mutation` (Stryker), `test:load` (k6), fast-check property + **core 100%/4-metric coverage**; nightly workflow runs heavy suites |
-| M01 Identity & Tenancy | in progress | TASK-003 (done), 004 (done; tenant guard) | Store, User, Membership, Subscription | **fail-closed tenant isolation** (Prisma extension + ALS context); read + write-path scoping; placeholder token (no real secret); no PII; store-scoped cascades; documented guard bypass boundaries (raw SQL / nested writes → TASK-009) | migration tests (clean + on-existing) + **tenant-isolation suite (16 cases incl. write-path)** green; **force-run in CI** (no silent skip); SKIPPED locally w/o DB |
+| M01 Identity & Tenancy | in progress | TASK-003 (done), 004 (done; tenant guard), 009 (REVIEW; raw + nested boundaries closed) | Store, User, Membership, Subscription | **fail-closed tenant isolation** (Prisma extension + ALS context); read + write-path scoping; **raw SQL refused on guarded client + ESLint-banned repo-wide**; **nested tenant writes rejected**; placeholder token (no real secret); no PII; store-scoped cascades | migration tests (clean + on-existing) + **tenant-isolation suite (22 cases incl. write-path, raw, nested)** + ESLint raw-ban RuleTester green; **force-run in CI** (no silent skip); SKIPPED locally w/o DB |

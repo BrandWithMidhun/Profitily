@@ -13,7 +13,7 @@ import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -321,6 +321,91 @@ describe.skipIf(gate.skip)('tenant isolation (sev-1)', () => {
       await expect(guarded.store.findMany()).resolves.toBeInstanceOf(Array);
       const store = await guarded.store.findUnique({ where: { id: storeA } });
       expect(store?.id).toBe(storeA);
+    });
+  });
+
+  describe('(e) raw SQL boundary (TASK-009)', () => {
+    it('guarded client REFUSES raw SQL (fail closed)', async () => {
+      await expect(
+        // eslint-disable-next-line no-restricted-syntax -- TENANT-RAW-OK: asserting the guarded client refuses raw SQL
+        asA(() => guarded.$queryRaw`SELECT 1`),
+      ).rejects.toBeInstanceOf(TenantIsolationError);
+    });
+
+    it('escape hatch: UNGUARDED raw with a manual storeId predicate reads only A', async () => {
+      // eslint-disable-next-line no-restricted-syntax -- TENANT-RAW-OK: sanctioned raw on the unguarded client, scoped by the parameterized storeId predicate
+      const rows = await raw.$queryRaw<{ storeId: string }[]>(
+        Prisma.sql`SELECT "storeId" FROM "Membership" WHERE "storeId" = ${storeA}`,
+      );
+      expect(rows.length).toBeGreaterThanOrEqual(1);
+      expect(rows.every((r) => r.storeId === storeA)).toBe(true);
+    });
+  });
+
+  describe('(f) nested-write boundary (TASK-009)', () => {
+    it('rejects a nested tenant write via a non-tenant parent (User → Membership) and writes nothing', async () => {
+      const uid = await newUser();
+      await expect(
+        asA(() =>
+          guarded.user.update({
+            where: { id: uid },
+            data: {
+              memberships: { create: { storeId: storeB, role: 'OWNER' } },
+            },
+          }),
+        ),
+      ).rejects.toBeInstanceOf(TenantIsolationError);
+      // Nothing was written for that user.
+      expect(await raw.membership.count({ where: { userId: uid } })).toBe(0);
+    });
+
+    it('rejects a nested tenant write via Store.subscription and writes nothing', async () => {
+      const before = await raw.store.count();
+      await expect(
+        asA(() =>
+          guarded.store.create({
+            data: {
+              shopDomain: 'nested.myshopify.com',
+              accessToken: 'placeholder',
+              subscription: { create: {} },
+            },
+          }),
+        ),
+      ).rejects.toBeInstanceOf(TenantIsolationError);
+      expect(await raw.store.count()).toBe(before); // store not created either
+      expect(
+        await raw.store.count({ where: { shopDomain: 'nested.myshopify.com' } }),
+      ).toBe(0);
+    });
+
+    it('allows a nested NON-tenant write (Membership.update → connect a different global User) and does not throw', async () => {
+      const u1 = await newUser();
+      const u2 = await newUser();
+      const m = await asA(() =>
+        guarded.membership.create({
+          data: { userId: u1, storeId: storeA, role: 'VIEWER' },
+        }),
+      );
+      // user is the global (non-tenant) relation — a nested write into it is allowed.
+      const updated = await asA(() =>
+        guarded.membership.update({
+          where: { id: m.id },
+          data: { user: { connect: { id: u2 } } },
+        }),
+      );
+      expect(updated.userId).toBe(u2);
+      expect(updated.storeId).toBe(storeA);
+    });
+
+    it('safe top-level pattern still works and stays scoped to A', async () => {
+      const uid = await newUser();
+      await asA(() =>
+        guarded.membership.create({
+          data: { userId: uid, storeId: storeB, role: 'ADMIN' },
+        }),
+      );
+      const row = await raw.membership.findFirst({ where: { userId: uid } });
+      expect(row?.storeId).toBe(storeA); // storeB requested, forced to A
     });
   });
 });

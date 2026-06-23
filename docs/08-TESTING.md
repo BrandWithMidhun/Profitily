@@ -97,7 +97,12 @@ Plus cross-cutting suites: **load (k6)**, **security (SAST/DAST/deps/secrets)**,
 ### Multi-tenant isolation (sev-1)
 A standing suite that, for every tenant table, asserts queries scoped to store A
 **never** return store B's rows, and that the tenant guard throws on unscoped access.
-**Extend it whenever a tenant table is added** — it's part of the acceptance criteria.
+It also pins the guard's hardened boundaries (TASK-009): **raw SQL** is refused on the
+guarded client (escape hatch = unguarded client + manual `storeId` predicate) and
+**nested writes** into tenant models are rejected (non-tenant nesting stays allowed).
+Real-PG, **force-run in CI** (never silently skipped); a RuleTester unit test proves the
+ESLint raw-ban. **Extend it whenever a tenant table is added** — it's part of the
+acceptance criteria.
 
 ### Idempotency / replay
 For every webhook + sync job: deliver the same event twice and assert exactly one

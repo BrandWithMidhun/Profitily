@@ -19,10 +19,22 @@ The top risk. Every tenant query is scoped by `storeId` through the Prisma tenan
 extension, which **rejects unscoped tenant access** (fail closed). Cross-tenant data
 exposure is a sev-1 defect that auto-fails review. The standing isolation test suite
 (`docs/08 §3`) must be extended for every new tenant table.
-**Guard boundaries:** the extension scopes only top-level Prisma model operations. It
-does **not** scope `$queryRaw`/`$executeRaw` (raw SQL bypasses it — never pass tenant
-data through raw SQL without a manual `storeId` predicate) or nested writes into tenant
-models (use top-level ops or scope explicitly). Hardening for these is TASK-009.
+**Guard boundaries (hardened in TASK-009):** the extension scopes top-level Prisma model
+operations. The two paths it cannot scope are closed **fail-closed**, not left open:
+- **Raw SQL** (`$queryRaw`/`$queryRawUnsafe`/`$executeRaw`/`$executeRawUnsafe`) cannot be
+  tenant-scoped by a model hook, so on the **guarded client it is refused at runtime**
+  (throws `TenantIsolationError`) **and** banned repo-wide by ESLint
+  (`no-restricted-syntax`, §7). The guarded client never runs raw — it rejects it, it
+  does not scope it. A sanctioned raw query uses the **unguarded** client with a manual
+  `storeId` predicate and an audited `// TENANT-RAW-OK:` disable (greppable, review-gated).
+- **Nested writes** into tenant models are **rejected** (the guard does not deep-scope
+  them): any nested `create`/`connect`/`update`/`upsert`/`delete`/… on a relation whose
+  target is a tenant model throws. Use a top-level scoped op on that model instead. The
+  guard **cannot** verify a nested `connect` targets an in-context row (that needs a DB
+  read) — which is why nested tenant writes are rejected rather than scoped. Nested writes
+  into **non-tenant** targets (e.g. connecting a global `User`) are allowed. New-tenant
+  **provisioning** (a store + its first rows) is a trusted bootstrap on the unguarded
+  client (owned by TASK-010/011).
 
 ## 3. Authentication
 - **Sessions:** short-lived JWT access tokens + rotating refresh tokens; verify
@@ -63,7 +75,10 @@ models (use top-level ops or scope explicitly). Hardening for these is TASK-009.
 - **Validate every boundary** with zod (API requests, webhook payloads, CSV imports,
   AI tool args). Reject malformed input; never partially trust.
 - **No string-built SQL** — Prisma parameterizes queries. No `queryRaw` with
-  interpolated user input.
+  interpolated user input. Prisma raw (`$queryRaw`/`$queryRawUnsafe`/`$executeRaw`/
+  `$executeRawUnsafe`) is **banned repo-wide by ESLint** (`no-restricted-syntax`) because
+  it bypasses the tenant guard (§2); a sanctioned raw query uses the unguarded client with
+  a manual `storeId` predicate and an audited `// TENANT-RAW-OK:` disable.
 - **XSS:** React escapes by default; never `dangerouslySetInnerHTML` with untrusted
   data; set a **Content-Security-Policy**.
 - **CSRF:** protect state-changing browser requests (same-site cookies / token).
