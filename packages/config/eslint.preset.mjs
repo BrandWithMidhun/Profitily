@@ -24,5 +24,23 @@ export default tseslint.config(
       sourceType: 'module',
       globals: { ...globals.node },
     },
+    rules: {
+      // Tenant-isolation hardening (sev-1, docs/13 §2/§7 · TASK-009): Prisma raw SQL
+      // bypasses the tenant guard. Ban it repo-wide so an accidental unscoped raw
+      // query can never ship. The selector matches both the call callee
+      // (`db.$queryRawUnsafe(...)`) and the tagged-template tag (`db.$queryRaw`...``).
+      // A sanctioned raw query uses the UNGUARDED client + a manual storeId predicate
+      // and an audited disable:
+      //   // eslint-disable-next-line no-restricted-syntax -- TENANT-RAW-OK: <reason + storeId predicate>
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "MemberExpression[property.name=/^\\$(queryRaw|queryRawUnsafe|executeRaw|executeRawUnsafe)$/]",
+          message:
+            'Prisma raw SQL ($queryRaw/$queryRawUnsafe/$executeRaw/$executeRawUnsafe) bypasses the tenant guard (docs/13 §2/§7). Use scoped Prisma model operations. For a sanctioned raw query, use the unguarded client with a manual storeId predicate and disable this rule with a justification: // eslint-disable-next-line no-restricted-syntax -- TENANT-RAW-OK: <reason + storeId predicate>.',
+        },
+      ],
+    },
   },
 );
