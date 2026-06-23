@@ -45,6 +45,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+      # Visual baselines are Linux PNGs (committed via the Playwright Docker image);
+      # the Linux runner matches them. See e2e/visual/README.md.
+      - run: pnpm test:visual
 
   mutation:
     name: mutation (Stryker)

@@ -1,9 +1,19 @@
 import { expect, test } from '@playwright/test';
 
-test('portal home renders with the stub user', async ({ page }) => {
+test('portal renders inside the app shell', async ({ page }) => {
   await page.goto('http://localhost:3000/');
   await expect(
-    page.getByRole('heading', { name: /Profitily Portal/i }),
+    page.getByRole('heading', { name: 'Executive Dashboard', exact: true }),
   ).toBeVisible();
-  await expect(page.getByTestId('stub-user')).toContainText('Demo User');
+  // Left nav present (the shell frame)
+  await expect(page.getByRole('link', { name: 'Products' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible();
+});
+
+test('portal nav routes are navigable', async ({ page }) => {
+  await page.goto('http://localhost:3000/');
+  await page.getByRole('link', { name: 'Costs' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Costs', exact: true }),
+  ).toBeVisible();
 });
