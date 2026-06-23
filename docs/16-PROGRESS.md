@@ -441,11 +441,23 @@
   same helpers, no duplicated crypto) → redirect into `/auth/shopify/install`; no `shop`
   → neutral 200 landing. Funnels into the single OAuth flow (state still minted in
   install); an already-installed shop will branch to the embedded UI here at TASK-011.
+- **OAuth state cookie attributes (follow-up):** live install reached the callback (HMAC
+  ✓, code granted) but failed the state check — the cookie was `SameSite=Lax` (plan flaw),
+  so it wasn't sent back on the **cross-site** OAuth return (and any third-party/embedded
+  leg). Fixed to **`SameSite=None; Secure; Partitioned` (CHIPS) + HttpOnly** on
+  staging/prod (NODE_ENV != `development`), with a relaxed `Lax`/non-secure fallback for
+  local HTTP dev only. `statesMatch`/HMAC/exchange/crypto unchanged. A supertest e2e
+  asserts the emitted `Set-Cookie` header contains `SameSite=None; Secure; Partitioned;
+  HttpOnly` (staging NODE_ENV=`production`).
+- **Direction (TASK-011):** migrate to Shopify **managed installation + token exchange**;
+  this legacy authorization-code-grant cookie fix is the interim correct fix for the
+  flow we built.
 - **⚠️ Live verification (bind-down 5) — pending planner re-test after deploy:** with the
-  root entrypoint in place the handshake should complete end-to-end (`/` → verify →
-  `/auth/shopify/install` → authorize → callback → token persisted encrypted →
-  `baseCurrency` read). The executor cannot drive a browser/dev-store install, so the
-  live confirmation is the planner's to run; everything locally verifiable is green.
+  root entrypoint + cookie fix in place the handshake should complete end-to-end (`/` →
+  verify → `/auth/shopify/install` → authorize → callback → **state matches** → token
+  exchange → persisted encrypted → `baseCurrency` read). The executor cannot drive a
+  browser/dev-store install, so the live confirmation is the planner's to run; everything
+  locally verifiable is green.
 - **Backlog notes (bind-down 4 — direction only, not built):**
   1. **Sync/integration layer (TASK-020+) should default to GraphQL.** Shopify is
      freezing REST for new fields; the single install-time `shop.json` REST read here is
