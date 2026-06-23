@@ -18,7 +18,10 @@
   --surface-muted: #f8fafc;
   --border-color: #e2e8f0;
   --text-primary: #0f172a;
-  --text-muted: #64748b;
+  /* tokens.json textMuted — slate-600 for WCAG AA (4.5:1) muted body text on the slate
+     surfaces (slate-500 #64748b only reaches ~4.34:1). border (#e2e8f0) is the separate
+     non-text role at the 3:1 bar. */
+  --text-muted: #475569;
 
   /* shadcn semantic roles (light) — card-on-slate per docs/15 §3 */
   --background: var(--surface-muted);
@@ -32,10 +35,7 @@
   --secondary: #f1f5f9;
   --secondary-foreground: var(--text-primary);
   --muted: #f1f5f9;
-  /* A11y override: tokens.json textMuted (#64748b) only reaches ~4.34:1 on the slate
-     surfaces — below WCAG AA 4.5:1. The muted-FOREGROUND role uses slate-600 so muted
-     body text passes AA everywhere. Raw --text-muted is kept for icons/borders. */
-  --muted-foreground: #475569;
+  --muted-foreground: var(--text-muted);
   --accent: #eef2ff;
   --accent-foreground: var(--brand);
   --destructive: var(--loss);
