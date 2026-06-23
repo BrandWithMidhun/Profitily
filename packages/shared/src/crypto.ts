@@ -56,7 +56,9 @@ const fromB64url = (s: string): Buffer => Buffer.from(s, 'base64url');
 export function encryptSecret(plaintext: string): string {
   const key = deriveKey(CURRENT_KEY_VERSION);
   const iv = randomBytes(IV_BYTES);
-  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const cipher = createCipheriv('aes-256-gcm', key, iv, {
+    authTagLength: TAG_BYTES,
+  });
   const ciphertext = Buffer.concat([
     cipher.update(plaintext, 'utf8'),
     cipher.final(),
@@ -91,7 +93,9 @@ export function decryptSecret(blob: string): string {
     throw new Error('Malformed secret blob: bad auth tag');
   }
   const key = deriveKey(version);
-  const decipher = createDecipheriv('aes-256-gcm', key, iv);
+  const decipher = createDecipheriv('aes-256-gcm', key, iv, {
+    authTagLength: TAG_BYTES,
+  });
   decipher.setAuthTag(tag);
   // final() throws if the auth tag does not verify (tamper / wrong key).
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString(
