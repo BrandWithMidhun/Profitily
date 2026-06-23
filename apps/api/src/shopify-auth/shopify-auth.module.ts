@@ -4,6 +4,7 @@ import type { Env } from '@profitily/shared';
 import { ENV } from '../config/config.module.js';
 
 import { BootstrapPrismaService } from './bootstrap-prisma.service.js';
+import { RootController } from './root.controller.js';
 import { ShopifyAuthController } from './shopify-auth.controller.js';
 import { ShopifyInstallService } from './shopify-install.service.js';
 import {
@@ -13,7 +14,7 @@ import {
 import { StoreEventsService } from './store-events.service.js';
 
 @Module({
-  controllers: [ShopifyAuthController],
+  controllers: [RootController, ShopifyAuthController],
   providers: [
     BootstrapPrismaService,
     StoreEventsService,

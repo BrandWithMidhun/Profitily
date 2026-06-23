@@ -7,6 +7,7 @@ import { ENV } from '../config/config.module.js';
 import { verifyShopifyHmac } from './hmac.js';
 import { callbackQuerySchema } from './schemas.js';
 import { parseShopDomain } from './shop-domain.js';
+import { requireShopifyConfig } from './shopify-config.js';
 import { ShopifyInstallService } from './shopify-install.service.js';
 import {
   SHOPIFY_OAUTH_CLIENT,
@@ -24,25 +25,8 @@ export class ShopifyAuthController {
     private readonly installer: ShopifyInstallService,
   ) {}
 
-  private requireConfig(): {
-    apiKey: string;
-    apiSecret: string;
-    scopes: string;
-    base: string;
-  } {
-    const apiKey = this.env.SHOPIFY_API_KEY;
-    const apiSecret = this.env.SHOPIFY_API_SECRET;
-    if (!apiKey || !apiSecret) {
-      throw new Error(
-        'Shopify OAuth is not configured (SHOPIFY_API_KEY / SHOPIFY_API_SECRET).',
-      );
-    }
-    return {
-      apiKey,
-      apiSecret,
-      scopes: this.env.SHOPIFY_SCOPES,
-      base: this.env.SHOPIFY_APP_URL ?? this.env.API_BASE_URL,
-    };
+  private requireConfig() {
+    return requireShopifyConfig(this.env);
   }
 
   /** Begin install: validate shop, set the signed state cookie, redirect to Shopify. */
