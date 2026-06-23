@@ -435,11 +435,17 @@
   persist + idempotent re-install, counts unchanged); ESLint RuleTester proves the
   `createUnscopedClient` gate. lint 8/8 (0 err), typecheck 11/11, build 7/7, full `pnpm
   test` green on real PG (alt port 5433; markopz held 5432).
-- **⚠️ Live verification (bind-down 5) — NOT done by executor:** completing a real OAuth
-  consent against the dev app needs a browser + dev store + the Railway-set `SHOPIFY_*`
-  secrets, which the executor cannot drive. **Flagged for the planner to run** (install
-  via the dev app → confirm handshake completes, token persists encrypted, live
-  `baseCurrency` reads). Everything locally verifiable is green.
+- **App URL root entrypoint (follow-up):** live install surfaced that Shopify first hits
+  the App URL root (`GET /`) with `?shop=&hmac=&host=&timestamp=`, which 404'd. Added
+  `RootController` (`GET /`): `shop` present → verify shop-format → HMAC (reusing the
+  same helpers, no duplicated crypto) → redirect into `/auth/shopify/install`; no `shop`
+  → neutral 200 landing. Funnels into the single OAuth flow (state still minted in
+  install); an already-installed shop will branch to the embedded UI here at TASK-011.
+- **⚠️ Live verification (bind-down 5) — pending planner re-test after deploy:** with the
+  root entrypoint in place the handshake should complete end-to-end (`/` → verify →
+  `/auth/shopify/install` → authorize → callback → token persisted encrypted →
+  `baseCurrency` read). The executor cannot drive a browser/dev-store install, so the
+  live confirmation is the planner's to run; everything locally verifiable is green.
 - **Backlog notes (bind-down 4 — direction only, not built):**
   1. **Sync/integration layer (TASK-020+) should default to GraphQL.** Shopify is
      freezing REST for new fields; the single install-time `shop.json` REST read here is
